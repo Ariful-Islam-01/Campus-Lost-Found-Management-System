@@ -44,3 +44,10 @@ function initDatabase() {
 
 // Auto-initialize the tables
 initDatabase();
+
+function getUserByEmail($email) {
+    $db = getDBConnection();
+    $stmt = $db->prepare("SELECT * FROM users WHERE email = :email");
+    $stmt->execute(['email' => $email]);
+    return $stmt->fetch();
+}
