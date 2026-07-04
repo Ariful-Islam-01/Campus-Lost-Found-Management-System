@@ -1,12 +1,12 @@
 /**
  * Campus Lost & Found Management System
- * ST001-1: Registration Form Design � Real-time Validation Script
+ * ST001-1 & ST001-2: Registration Form Real-time Validation & Backend Fetch
  */
 
 (function () {
   'use strict';
 
-  /* -- DOM References -- */
+  /* ── DOM References ── */
   const form            = document.getElementById('registrationForm');
   const fullNameInput   = document.getElementById('fullName');
   const emailInput      = document.getElementById('emailAddress');
@@ -20,10 +20,10 @@
   const successToast    = document.getElementById('successToast');
   const btnLoader       = document.getElementById('btnLoader');
 
-  /* -- Validation State -- */
+  /* ── Validation State ── */
   const state = { name: false, email: false, password: false, confirm: false, terms: false };
 
-  /* -- Helpers -- */
+  /* ── Helpers ── */
   function setFieldState(groupId, statusIconId, isValid, message, messageType) {
     const group = document.getElementById(groupId);
     const icon  = document.getElementById(statusIconId);
@@ -58,7 +58,7 @@
     if (msg)  { msg.textContent = ''; msg.className = 'field-message'; }
   }
 
-  /* -- Progress Bar -- */
+  /* ── Progress Bar ── */
   function updateProgress() {
     const filled = Object.values(state).filter(Boolean).length;
     const pct    = Math.round((filled / Object.keys(state).length) * 100);
@@ -68,7 +68,7 @@
     if (track) track.setAttribute('aria-valuenow', pct);
   }
 
-  /* -- Full Name Validation -- */
+  /* ── Full Name Validation ── */
   function validateName(live) {
     const val = fullNameInput.value.trim();
     if (!val && !live) {
@@ -90,7 +90,7 @@
     updateProgress();
   }
 
-  /* -- Email Validation -- */
+  /* ── Email Validation ── */
   function validateEmail(live) {
     const val = emailInput.value.trim();
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -104,13 +104,13 @@
       setFieldState('fieldGroupEmail', 'statusIconEmail', false, 'Please enter a valid email address.', 'error');
       state.email = false;
     } else {
-      setFieldState('fieldGroupEmail', 'statusIconEmail', true, 'Valid email address.', 'success');
+      setFieldState('fieldGroupEmail', 'statusIconEmail', true, 'Valid email format.', 'success');
       state.email = true;
     }
     updateProgress();
   }
 
-  /* -- Password Strength & Rules -- */
+  /* ── Password Strength & Rules ── */
   const rules = {
     length:  { id: 'ruleLength',  fn: v => v.length >= 8 },
     upper:   { id: 'ruleUpper',   fn: v => /[A-Z]/.test(v) },
@@ -126,7 +126,7 @@
     if (/[A-Z]/.test(val)) score++;
     if (/[0-9]/.test(val)) score++;
     if (/[^A-Za-z0-9]/.test(val)) score++;
-    return score; // 0�5
+    return score; // 0–5
   }
 
   const strengthLevels = [
@@ -206,7 +206,7 @@
     updateProgress();
   }
 
-  /* -- Confirm Password -- */
+  /* ── Confirm Password ── */
   function validateConfirm(live) {
     const val     = confirmInput.value;
     const passVal = passwordInput.value;
@@ -227,7 +227,7 @@
     updateProgress();
   }
 
-  /* -- Terms -- */
+  /* ── Terms ── */
   function validateTerms() {
     const msgEl = document.getElementById('termsMsg');
     if (!termsInput.checked) {
@@ -242,7 +242,7 @@
     updateProgress();
   }
 
-  /* -- Password Toggle -- */
+  /* ── Password Toggle ── */
   function setupToggle(btnId, inputEl) {
     const btn = document.getElementById(btnId);
     if (!btn || !inputEl) return;
@@ -257,7 +257,7 @@
     });
   }
 
-  /* -- Event Listeners -- */
+  /* ── Event Listeners ── */
   fullNameInput.addEventListener('input',  () => validateName(true));
   fullNameInput.addEventListener('blur',   () => validateName(false));
   emailInput.addEventListener('input',     () => validateEmail(true));
@@ -271,7 +271,7 @@
   setupToggle('togglePassword', passwordInput);
   setupToggle('toggleConfirm',  confirmInput);
 
-  /* -- Form Submit -- */
+  /* ── Form Submit ── */
   form.addEventListener('submit', function (e) {
     e.preventDefault();
 
@@ -284,24 +284,60 @@
 
     const allValid = Object.values(state).every(Boolean);
     if (!allValid) {
-      // Focus first invalid field
       const firstError = form.querySelector('.error .form-input');
       if (firstError) firstError.focus();
       return;
     }
 
-    // Simulate async submission
     submitBtn.classList.add('loading');
     submitBtn.disabled = true;
     successToast.setAttribute('aria-hidden', 'true');
     successToast.style.display = 'none';
 
-    setTimeout(() => {
+    // Clear validation error highlights that might be stale
+    document.querySelectorAll('.field-group').forEach(g => {
+      if (!g.classList.contains('valid')) {
+        g.classList.remove('error');
+      }
+    });
+
+    const formData = {
+      fullName: fullNameInput.value.trim(),
+      emailAddress: emailInput.value.trim(),
+      password: passwordInput.value,
+      confirmPassword: confirmInput.value,
+      agreeTerms: termsInput.checked
+    };
+
+    fetch('register.php', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(formData)
+    })
+    .then(response => {
+      return response.json().then(data => {
+        if (!response.ok) {
+          return Promise.reject({ status: response.status, data: data });
+        }
+        return data;
+      });
+    })
+    .then(data => {
       submitBtn.classList.remove('loading');
       submitBtn.disabled = false;
+      
+      // Update toast description with verification info (code printed for demo purposes)
+      const toastDesc = successToast.querySelector('p');
+      if (toastDesc) {
+        toastDesc.textContent = `Please verify your email address. Verification Code: ${data.user.verification_code}`;
+      }
+      
       successToast.style.display = 'flex';
       successToast.setAttribute('aria-hidden', 'false');
       form.reset();
+      
       // Reset state
       Object.keys(state).forEach(k => state[k] = false);
       document.querySelectorAll('.field-group').forEach(g => g.classList.remove('valid','error'));
@@ -309,16 +345,49 @@
       document.querySelectorAll('[role="alert"]').forEach(m => { m.textContent = ''; m.className = 'field-message'; });
       document.querySelectorAll('.strength-bar').forEach(b => b.className = 'strength-bar');
       document.querySelectorAll('.pwd-rule').forEach(r => r.classList.remove('met','unmet'));
-      strengthText.textContent = ''; strengthText.className = 'strength-text';
+      strengthText.textContent = ''; 
+      strengthText.className = 'strength-text';
       updateProgress();
-      setTimeout(() => {
-        successToast.setAttribute('aria-hidden', 'true');
-        successToast.style.display = 'none';
-      }, 6000);
-    }, 1800);
+      
+      // Smooth scroll to card
+      document.querySelector('.form-card').scrollIntoView({ behavior: 'smooth' });
+    })
+    .catch(error => {
+      submitBtn.classList.remove('loading');
+      submitBtn.disabled = false;
+      
+      if (error.data && error.data.status === 'validation_error') {
+        const errs = error.data.errors;
+        Object.keys(errs).forEach(field => {
+          if (field === 'fullName') {
+            setFieldState('fieldGroupName', 'statusIconName', false, errs.fullName, 'error');
+          } else if (field === 'emailAddress') {
+            setFieldState('fieldGroupEmail', 'statusIconEmail', false, errs.emailAddress, 'error');
+          } else if (field === 'password') {
+            document.getElementById('fieldGroupPassword').classList.remove('valid');
+            document.getElementById('fieldGroupPassword').classList.add('error');
+            const msgEl = document.getElementById('passwordMsg');
+            msgEl.textContent = errs.password;
+            msgEl.className = 'field-message msg-error';
+          } else if (field === 'confirmPassword') {
+            setFieldState('fieldGroupConfirmPassword', 'statusIconConfirm', false, errs.confirmPassword, 'error');
+          } else if (field === 'agreeTerms') {
+            const msgEl = document.getElementById('termsMsg');
+            msgEl.textContent = errs.agreeTerms;
+            msgEl.className = 'field-message msg-error';
+          }
+        });
+        
+        const firstError = form.querySelector('.error .form-input');
+        if (firstError) firstError.focus();
+      } else {
+        const msg = error.data && error.data.message ? error.data.message : 'An unexpected server error occurred. Please try again.';
+        alert(msg);
+      }
+    });
   });
 
-  /* -- Initialize -- */
+  /* ── Initialize ── */
   updateProgress();
 
 })();
