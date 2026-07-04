@@ -1,5 +1,5 @@
 /* ============================================================
-   Campus Lost & Found � Registration Page Styles
+   Campus Lost & Found — Registration Page Styles
    ST001-1: Registration Form Design
    ============================================================ */
 
@@ -349,8 +349,8 @@ body {
   pointer-events: none;
 }
 .input-status-icon.show { opacity: 1; transform: scale(1.1); }
-.input-status-icon.ok::after { content: '?'; color: var(--clr-success); font-weight: 700; font-size: 14px; }
-.input-status-icon.bad::after { content: '?'; color: var(--clr-error); font-weight: 700; font-size: 14px; }
+.input-status-icon.ok::after { content: '✓'; color: var(--clr-success); font-weight: 700; font-size: 14px; }
+.input-status-icon.bad::after { content: '✕'; color: var(--clr-error); font-weight: 700; font-size: 14px; }
 
 /* Toggle Password Button */
 .toggle-password {
@@ -454,8 +454,8 @@ body {
   transition: background var(--transition-base);
 }
 .pwd-rule.met .rule-icon { background: rgba(16,185,129,.2); color: #34d399; }
-.pwd-rule.met .rule-icon::after { content: '?'; }
-.pwd-rule.unmet .rule-icon::after { content: '?'; color: var(--clr-gray-600); }
+.pwd-rule.met .rule-icon::after { content: '✓'; }
+.pwd-rule.unmet .rule-icon::after { content: '○'; color: var(--clr-gray-600); }
 
 /* ---------- Terms Checkbox ---------- */
 .terms-group { margin-bottom: 1.25rem; }
