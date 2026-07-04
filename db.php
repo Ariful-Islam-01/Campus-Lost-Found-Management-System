@@ -40,6 +40,18 @@ function initDatabase() {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
     
     $db->exec($sql);
+
+    // Dynamically check and add phone column if not exists
+    $checkPhone = $db->query("SHOW COLUMNS FROM users LIKE 'phone'")->fetch();
+    if (!$checkPhone) {
+        $db->exec("ALTER TABLE users ADD COLUMN phone VARCHAR(20) NULL AFTER email");
+    }
+
+    // Dynamically check and add profile_photo column if not exists
+    $checkPhoto = $db->query("SHOW COLUMNS FROM users LIKE 'profile_photo'")->fetch();
+    if (!$checkPhoto) {
+        $db->exec("ALTER TABLE users ADD COLUMN profile_photo VARCHAR(255) NULL AFTER phone");
+    }
 }
 
 // Auto-initialize the tables
@@ -50,4 +62,31 @@ function getUserByEmail($email) {
     $stmt = $db->prepare("SELECT * FROM users WHERE email = :email");
     $stmt->execute(['email' => $email]);
     return $stmt->fetch();
+}
+
+function getUserById($userId) {
+    $db = getDBConnection();
+    $stmt = $db->prepare("SELECT * FROM users WHERE id = :id");
+    $stmt->execute(['id' => $userId]);
+    return $stmt->fetch();
+}
+
+function updateUserProfile($userId, $name, $phone, $photoPath) {
+    $db = getDBConnection();
+    if ($photoPath !== null) {
+        $stmt = $db->prepare("UPDATE users SET name = :name, phone = :phone, profile_photo = :photo WHERE id = :id");
+        return $stmt->execute([
+            'name' => $name,
+            'phone' => $phone,
+            'photo' => $photoPath,
+            'id' => $userId
+        ]);
+    } else {
+        $stmt = $db->prepare("UPDATE users SET name = :name, phone = :phone WHERE id = :id");
+        return $stmt->execute([
+            'name' => $name,
+            'phone' => $phone,
+            'id' => $userId
+        ]);
+    }
 }
