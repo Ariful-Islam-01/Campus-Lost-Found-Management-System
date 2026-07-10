@@ -13,6 +13,7 @@ require_once __DIR__ . '/db.php';
 $userId = $_SESSION['user_id'];
 $user = getUserById($userId);
 $lostItems = getLostItems();
+$foundItems = getFoundItems();
 
 // Fallback if user session is invalid
 if (!$user) {
@@ -385,6 +386,11 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
       z-index: 2;
     }
 
+    .report-badge.badge-found {
+      background: rgba(16, 185, 129, 0.9);
+      border-color: rgba(16, 185, 129, 0.4);
+    }
+
     .report-category-badge {
       position: absolute;
       top: 12px;
@@ -628,6 +634,72 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
           <div class="no-reports-msg">
             <svg style="margin: 0 auto 1rem; display: block; color: var(--clr-gray-600);" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
             No active lost reports found. If you lost something, report it to show here!
+          </div>
+        <?php endif; ?>
+      </div>
+    </div>
+
+    <!-- Found Reports Section -->
+    <div class="reports-section" style="margin-top: 3rem; margin-bottom: 2rem;">
+      <h2 class="reports-title" style="color: var(--clr-emerald-400);">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        Active Found Reports
+      </h2>
+      <div class="reports-grid">
+        <?php if (!empty($foundItems)): ?>
+          <?php foreach ($foundItems as $item): ?>
+            <div class="report-card" style="border-color: rgba(16, 185, 129, 0.15);">
+              <div class="report-thumbnail-container" style="border-bottom-color: rgba(16, 185, 129, 0.1);">
+                <span class="report-badge badge-found"><?php echo htmlspecialchars($item['status']); ?></span>
+                <span class="report-category-badge" style="background: rgba(16, 185, 129, 0.8);"><?php echo htmlspecialchars($item['category']); ?></span>
+                <?php 
+                $realPhotoPath = __DIR__ . DIRECTORY_SEPARATOR . str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $item['photo_path']);
+                if (!empty($item['photo_path']) && file_exists($realPhotoPath)): 
+                ?>
+                  <img src="<?php echo htmlspecialchars($item['photo_path']); ?>" alt="<?php echo htmlspecialchars($item['item_name']); ?>" class="report-thumbnail" loading="lazy" />
+                <?php else: ?>
+                  <!-- Fallback Icon Placeholder based on Category -->
+                  <svg class="report-fallback-icon" style="color: var(--clr-emerald-500);" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <?php if ($item['category'] === 'Electronics'): ?>
+                      <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+                    <?php elseif ($item['category'] === 'Books & Stationery'): ?>
+                      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                    <?php elseif ($item['category'] === 'Keys & Cards'): ?>
+                      <path d="M21 2h-6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z"/><path d="M3 10h10M3 14h10M7 6v12"/>
+                    <?php elseif ($item['category'] === 'Clothing & Accessories'): ?>
+                      <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/>
+                    <?php else: ?>
+                      <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                    <?php endif; ?>
+                  </svg>
+                <?php endif; ?>
+              </div>
+              <div class="report-details">
+                <div class="report-header-info">
+                  <h3 class="report-item-name" title="<?php echo htmlspecialchars($item['item_name']); ?>"><?php echo htmlspecialchars($item['item_name']); ?></h3>
+                  <p class="report-description"><?php echo htmlspecialchars($item['description']); ?></p>
+                </div>
+                <div class="report-meta-list">
+                  <div class="report-meta-item">
+                    <svg style="color: var(--clr-emerald-400);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                    <span>Pickup: <strong><?php echo htmlspecialchars($item['pickup_location']); ?></strong></span>
+                  </div>
+                  <div class="report-meta-item">
+                    <svg style="color: var(--clr-emerald-400);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    <span>Date Found: <strong><?php echo htmlspecialchars(date('M d, Y', strtotime($item['created_at']))); ?></strong></span>
+                  </div>
+                  <div class="report-meta-item">
+                    <svg style="color: var(--clr-emerald-400);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    <span>Finder: <span class="report-reporter-info" style="color: var(--clr-emerald-300);"><?php echo htmlspecialchars($item['finder_name']); ?></span> (<?php echo htmlspecialchars($item['finder_email']); ?>)</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          <?php endforeach; ?>
+        <?php else: ?>
+          <div class="no-reports-msg">
+            <svg style="margin: 0 auto 1rem; display: block; color: var(--clr-gray-600);" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+            No active found reports found. If you found something, report it to show here!
           </div>
         <?php endif; ?>
       </div>

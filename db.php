@@ -123,3 +123,9 @@ function createFoundItem($userId, $itemName, $category, $description, $pickupLoc
         'photo_path' => $photoPath
     ]);
 }
+
+function getFoundItems() {
+    $db = getDBConnection();
+    $stmt = $db->query("SELECT fi.*, u.name as finder_name, u.email as finder_email, u.phone as finder_phone FROM found_items fi JOIN users u ON fi.user_id = u.id ORDER BY fi.created_at DESC");
+    return $stmt->fetchAll();
+}
