@@ -12,6 +12,7 @@ require_once __DIR__ . '/db.php';
 
 $userId = $_SESSION['user_id'];
 $user = getUserById($userId);
+$lostItems = getLostItems();
 
 // Fallback if user session is invalid
 if (!$user) {
@@ -299,6 +300,183 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
       line-height: 1.5;
     }
 
+    /* Reports Section Styling */
+    .reports-section {
+      margin-top: 4rem;
+      text-align: left;
+    }
+
+    .reports-title {
+      font-size: 1.5rem;
+      font-weight: 800;
+      margin-bottom: 1.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding-bottom: 0.75rem;
+      background: linear-gradient(135deg, #fff 50%, var(--clr-teal-300));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .reports-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .report-card {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+      backdrop-filter: blur(12px);
+    }
+
+    .report-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--clr-teal-500);
+      background: rgba(255, 255, 255, 0.04);
+      box-shadow: 0 10px 30px rgba(13, 148, 136, 0.15);
+    }
+
+    .report-thumbnail-container {
+      width: 100%;
+      height: 180px;
+      background: rgba(255, 255, 255, 0.01);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .report-thumbnail {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.5s ease;
+    }
+
+    .report-card:hover .report-thumbnail {
+      transform: scale(1.05);
+    }
+
+    .report-badge {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      padding: 0.3rem 0.75rem;
+      border-radius: 99px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      background: rgba(239, 68, 68, 0.9);
+      color: white;
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      z-index: 2;
+    }
+
+    .report-category-badge {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      padding: 0.3rem 0.75rem;
+      border-radius: 99px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      background: rgba(13, 148, 136, 0.8);
+      color: white;
+      backdrop-filter: blur(4px);
+      z-index: 2;
+    }
+
+    .report-fallback-icon {
+      color: var(--clr-teal-500);
+      opacity: 0.4;
+    }
+
+    .report-details {
+      padding: 1.25rem;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .report-header-info {
+      margin-bottom: 1rem;
+    }
+
+    .report-item-name {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--clr-white);
+      margin-bottom: 0.4rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .report-description {
+      font-size: 0.85rem;
+      color: var(--clr-gray-400);
+      line-height: 1.5;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      height: 3.85em; /* approximate height for 3 lines */
+    }
+
+    .report-meta-list {
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      padding-top: 0.75rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+    }
+
+    .report-meta-item {
+      font-size: 0.78rem;
+      color: var(--clr-gray-400);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .report-meta-item svg {
+      width: 14px;
+      height: 14px;
+      color: var(--clr-teal-400);
+      flex-shrink: 0;
+    }
+
+    .report-reporter-info {
+      font-weight: 600;
+      color: var(--clr-teal-300);
+    }
+
+    .no-reports-msg {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 4rem 2rem;
+      background: rgba(255, 255, 255, 0.01);
+      border: 1px dashed rgba(255, 255, 255, 0.06);
+      border-radius: var(--radius-md);
+      color: var(--clr-gray-500);
+      font-size: 0.9rem;
+    }
+
     /* Responsive adjustments */
     @media (max-width: 768px) {
       .actions-grid {
@@ -306,6 +484,9 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
       }
       .welcome-card {
         padding: 2rem;
+      }
+      .reports-grid {
+        grid-template-columns: 1fr;
       }
     }
   </style>
@@ -360,7 +541,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
       
       <!-- Actions Grid -->
       <div class="actions-grid">
-        <a href="#" class="action-card">
+        <a href="report-lost.php" class="action-card">
           <div class="action-icon icon-lost">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
           </div>
@@ -383,6 +564,69 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
           <h3 class="action-title">Manage Profile</h3>
           <p class="action-desc">Keep your details up to date. Edit your name, contact phone number, or upload a custom avatar.</p>
         </a>
+      </div>
+    </div>
+
+    <!-- Reports Section -->
+    <div class="reports-section">
+      <h2 class="reports-title">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        Active Lost Reports
+      </h2>
+      <div class="reports-grid">
+        <?php if (!empty($lostItems)): ?>
+          <?php foreach ($lostItems as $item): ?>
+            <div class="report-card">
+              <div class="report-thumbnail-container">
+                <span class="report-badge"><?php echo htmlspecialchars($item['status']); ?></span>
+                <span class="report-category-badge"><?php echo htmlspecialchars($item['category']); ?></span>
+                <?php if (!empty($item['photo_path']) && file_exists(__DIR__ . '/' . $item['photo_path'])): ?>
+                  <img src="<?php echo htmlspecialchars($item['photo_path']); ?>" alt="<?php echo htmlspecialchars($item['item_name']); ?>" class="report-thumbnail" loading="lazy" />
+                <?php else: ?>
+                  <!-- Fallback Icon Placeholder based on Category -->
+                  <svg class="report-fallback-icon" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <?php if ($item['category'] === 'Electronics'): ?>
+                      <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+                    <?php elseif ($item['category'] === 'Books & Stationery'): ?>
+                      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                    <?php elseif ($item['category'] === 'Keys & Cards'): ?>
+                      <path d="M21 2h-6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z"/><path d="M3 10h10M3 14h10M7 6v12"/>
+                    <?php elseif ($item['category'] === 'Clothing & Accessories'): ?>
+                      <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/>
+                    <?php else: ?>
+                      <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                    <?php endif; ?>
+                  </svg>
+                <?php endif; ?>
+              </div>
+              <div class="report-details">
+                <div class="report-header-info">
+                  <h3 class="report-item-name" title="<?php echo htmlspecialchars($item['item_name']); ?>"><?php echo htmlspecialchars($item['item_name']); ?></h3>
+                  <p class="report-description"><?php echo htmlspecialchars($item['description']); ?></p>
+                </div>
+                <div class="report-meta-list">
+                  <div class="report-meta-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                    <span>Last seen: <strong><?php echo htmlspecialchars($item['last_seen_location']); ?></strong></span>
+                  </div>
+                  <div class="report-meta-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    <span>Date Lost: <strong><?php echo htmlspecialchars(date('M d, Y', strtotime($item['date_lost']))); ?></strong></span>
+                  </div>
+                  <div class="report-meta-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    <span>By: <span class="report-reporter-info"><?php echo htmlspecialchars($item['reporter_name']); ?></span> (<?php echo htmlspecialchars($item['reporter_email']); ?>)</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          <?php endforeach; ?>
+        <?php else: ?>
+          <div class="no-reports-msg">
+            <svg style="margin: 0 auto 1rem; display: block; color: var(--clr-gray-600);" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+            No active lost reports found. If you lost something, report it to show here!
+          </div>
+        <?php endif; ?>
       </div>
     </div>
   </main>

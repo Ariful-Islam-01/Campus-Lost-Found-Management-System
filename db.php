@@ -90,3 +90,23 @@ function updateUserProfile($userId, $name, $phone, $photoPath) {
         ]);
     }
 }
+
+function createLostItem($userId, $itemName, $category, $description, $lastSeenLocation, $dateLost, $photoPath) {
+    $db = getDBConnection();
+    $stmt = $db->prepare("INSERT INTO lost_items (user_id, item_name, category, description, last_seen_location, date_lost, photo_path, status) VALUES (:user_id, :item_name, :category, :description, :last_seen_location, :date_lost, :photo_path, 'Lost')");
+    return $stmt->execute([
+        'user_id' => $userId,
+        'item_name' => $itemName,
+        'category' => $category,
+        'description' => $description,
+        'last_seen_location' => $lastSeenLocation,
+        'date_lost' => $dateLost,
+        'photo_path' => $photoPath
+    ]);
+}
+
+function getLostItems() {
+    $db = getDBConnection();
+    $stmt = $db->query("SELECT li.*, u.name as reporter_name, u.email as reporter_email, u.phone as reporter_phone FROM lost_items li JOIN users u ON li.user_id = u.id ORDER BY li.created_at DESC");
+    return $stmt->fetchAll();
+}
