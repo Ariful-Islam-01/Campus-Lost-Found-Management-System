@@ -110,3 +110,17 @@ function getLostItems() {
     $stmt = $db->query("SELECT li.*, u.name as reporter_name, u.email as reporter_email, u.phone as reporter_phone FROM lost_items li JOIN users u ON li.user_id = u.id ORDER BY li.created_at DESC");
     return $stmt->fetchAll();
 }
+
+function getPaginatedLostItems($limit, $offset) {
+    $db = getDBConnection();
+    $stmt = $db->prepare("SELECT li.*, u.name as reporter_name, u.email as reporter_email, u.phone as reporter_phone FROM lost_items li JOIN users u ON li.user_id = u.id ORDER BY li.created_at DESC LIMIT :limit OFFSET :offset");
+    $stmt->bindValue(':limit', (int)$limit, PDO::PARAM_INT);
+    $stmt->bindValue(':offset', (int)$offset, PDO::PARAM_INT);
+    $stmt->execute();
+    return $stmt->fetchAll();
+}
+
+function getTotalLostItemsCount() {
+    $db = getDBConnection();
+    return (int)$db->query("SELECT COUNT(*) FROM lost_items")->fetchColumn();
+}
