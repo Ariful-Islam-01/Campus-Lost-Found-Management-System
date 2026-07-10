@@ -580,7 +580,10 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
               <div class="report-thumbnail-container">
                 <span class="report-badge"><?php echo htmlspecialchars($item['status']); ?></span>
                 <span class="report-category-badge"><?php echo htmlspecialchars($item['category']); ?></span>
-                <?php if (!empty($item['photo_path']) && file_exists(__DIR__ . '/' . $item['photo_path'])): ?>
+                <?php 
+                $realPhotoPath = __DIR__ . DIRECTORY_SEPARATOR . str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $item['photo_path']);
+                if (!empty($item['photo_path']) && file_exists($realPhotoPath)): 
+                ?>
                   <img src="<?php echo htmlspecialchars($item['photo_path']); ?>" alt="<?php echo htmlspecialchars($item['item_name']); ?>" class="report-thumbnail" loading="lazy" />
                 <?php else: ?>
                   <!-- Fallback Icon Placeholder based on Category -->
