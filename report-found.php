@@ -128,13 +128,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
     
-    // ST005-1 Success response
-    http_response_code(200);
-    echo json_encode([
-        'status' => 'success',
-        'message' => 'Found item report validated successfully!'
-    ]);
-    exit;
+    try {
+        // Save to Database
+        createFoundItem($userId, $itemName, $category, $description, $pickupLocation, $uploadedPhotoPath);
+        
+        http_response_code(201);
+        echo json_encode([
+            'status' => 'success',
+            'message' => 'Found item report submitted successfully!'
+        ]);
+        exit;
+        
+    } catch (Exception $e) {
+        // Clean up uploaded file if DB insertion failed
+        if ($uploadedPhotoPath && file_exists(__DIR__ . '/' . $uploadedPhotoPath)) {
+            @unlink(__DIR__ . '/' . $uploadedPhotoPath);
+        }
+        
+        http_response_code(500);
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'Failed to save the found item report. Please try again.'
+        ]);
+        exit;
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -231,8 +248,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
           </span>
           <div>
-            <strong>Validation Passed!</strong>
-            <p id="successToastMsg">Your found item details are fully validated and complete.</p>
+            <strong>Report Submitted!</strong>
+            <p id="successToastMsg">Your found item report has been saved successfully.</p>
           </div>
         </div>
 
@@ -328,8 +345,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
           <!-- Submit Button -->
           <button type="submit" id="submitBtn" class="btn-submit">
-            <span class="btn-text">Validate Found Report</span>
-            <span class="btn-loader" id="btnLoader" aria-label="Validating report">
+            <span class="btn-text">Submit Found Report</span>
+            <span class="btn-loader" id="btnLoader" aria-label="Submitting report">
               <svg class="spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
                 <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.2)"></circle>
                 <circle cx="12" cy="12" r="10" stroke="white" stroke-width="3"></circle>
