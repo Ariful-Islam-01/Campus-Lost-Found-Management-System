@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS lost_items (
     last_seen_location VARCHAR(255) NOT NULL,
     date_lost DATE NOT NULL,
     photo_path VARCHAR(255) NULL,
+    status VARCHAR(50) NOT NULL DEFAULT 'Lost',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
