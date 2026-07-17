@@ -570,6 +570,14 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
           <h3 class="action-title">Manage Profile</h3>
           <p class="action-desc">Keep your details up to date. Edit your name, contact phone number, or upload a custom avatar.</p>
         </a>
+
+        <a href="listings.php" class="action-card">
+          <div class="action-icon icon-found" style="background: rgba(13, 148, 136, 0.15); color: var(--clr-teal-400);">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/></svg>
+          </div>
+          <h3 class="action-title">Browse Listings</h3>
+          <p class="action-desc">View all lost and found reports. Search, filter by category, and browse items using page navigation.</p>
+        </a>
       </div>
     </div>
 
