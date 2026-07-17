@@ -105,9 +105,60 @@ function createLostItem($userId, $itemName, $category, $description, $lastSeenLo
     ]);
 }
 
-function getLostItems() {
+function getLostItems($filters = []) {
     $db = getDBConnection();
-    $stmt = $db->query("SELECT li.*, u.name as reporter_name, u.email as reporter_email, u.phone as reporter_phone FROM lost_items li JOIN users u ON li.user_id = u.id ORDER BY li.created_at DESC");
+    $sql = "SELECT li.*, u.name as reporter_name, u.email as reporter_email, u.phone as reporter_phone 
+            FROM lost_items li 
+            JOIN users u ON li.user_id = u.id";
+    
+    $where = [];
+    $params = [];
+    
+    if (!empty($filters['search'])) {
+        $where[] = "(li.item_name LIKE :search OR li.description LIKE :search OR u.name LIKE :search)";
+        $params['search'] = '%' . $filters['search'] . '%';
+    }
+    
+    if (!empty($filters['category'])) {
+        $where[] = "li.category = :category";
+        $params['category'] = $filters['category'];
+    }
+    
+    if (!empty($filters['location'])) {
+        $where[] = "li.last_seen_location = :location";
+        $params['location'] = $filters['location'];
+    }
+    
+    if (!empty($filters['date_range'])) {
+        $today = date('Y-m-d');
+        switch ($filters['date_range']) {
+            case 'today':
+                $where[] = "li.date_lost = :today";
+                $params['today'] = $today;
+                break;
+            case '7days':
+                $where[] = "li.date_lost >= :seven_days_ago";
+                $params['seven_days_ago'] = date('Y-m-d', strtotime('-7 days'));
+                break;
+            case '30days':
+                $where[] = "li.date_lost >= :thirty_days_ago";
+                $params['thirty_days_ago'] = date('Y-m-d', strtotime('-30 days'));
+                break;
+            case 'older':
+                $where[] = "li.date_lost < :thirty_days_ago";
+                $params['thirty_days_ago'] = date('Y-m-d', strtotime('-30 days'));
+                break;
+        }
+    }
+    
+    if (!empty($where)) {
+        $sql .= " WHERE " . implode(" AND ", $where);
+    }
+    
+    $sql .= " ORDER BY li.created_at DESC";
+    
+    $stmt = $db->prepare($sql);
+    $stmt->execute($params);
     return $stmt->fetchAll();
 }
 
@@ -124,8 +175,69 @@ function createFoundItem($userId, $itemName, $category, $description, $pickupLoc
     ]);
 }
 
-function getFoundItems() {
+function getFoundItems($filters = []) {
     $db = getDBConnection();
-    $stmt = $db->query("SELECT fi.*, u.name as finder_name, u.email as finder_email, u.phone as finder_phone FROM found_items fi JOIN users u ON fi.user_id = u.id ORDER BY fi.created_at DESC");
+    $sql = "SELECT fi.*, u.name as finder_name, u.email as finder_email, u.phone as finder_phone 
+            FROM found_items fi 
+            JOIN users u ON fi.user_id = u.id";
+    
+    $where = [];
+    $params = [];
+    
+    if (!empty($filters['search'])) {
+        $where[] = "(fi.item_name LIKE :search OR fi.description LIKE :search OR u.name LIKE :search)";
+        $params['search'] = '%' . $filters['search'] . '%';
+    }
+    
+    if (!empty($filters['category'])) {
+        $where[] = "fi.category = :category";
+        $params['category'] = $filters['category'];
+    }
+    
+    if (!empty($filters['location'])) {
+        $where[] = "fi.pickup_location = :location";
+        $params['location'] = $filters['location'];
+    }
+    
+    if (!empty($filters['date_range'])) {
+        $today_start = date('Y-m-d 00:00:00');
+        switch ($filters['date_range']) {
+            case 'today':
+                $where[] = "fi.created_at >= :today_start";
+                $params['today_start'] = $today_start;
+                break;
+            case '7days':
+                $where[] = "fi.created_at >= :seven_days_ago";
+                $params['seven_days_ago'] = date('Y-m-d 00:00:00', strtotime('-7 days'));
+                break;
+            case '30days':
+                $where[] = "fi.created_at >= :thirty_days_ago";
+                $params['thirty_days_ago'] = date('Y-m-d 00:00:00', strtotime('-30 days'));
+                break;
+            case 'older':
+                $where[] = "fi.created_at < :thirty_days_ago";
+                $params['thirty_days_ago'] = date('Y-m-d 00:00:00', strtotime('-30 days'));
+                break;
+        }
+    }
+    
+    if (!empty($where)) {
+        $sql .= " WHERE " . implode(" AND ", $where);
+    }
+    
+    $sql .= " ORDER BY fi.created_at DESC";
+    
+    $stmt = $db->prepare($sql);
+    $stmt->execute($params);
     return $stmt->fetchAll();
+}
+
+function getUniqueLocations() {
+    $db = getDBConnection();
+    $sql = "SELECT DISTINCT last_seen_location AS location FROM lost_items
+            UNION
+            SELECT DISTINCT pickup_location AS location FROM found_items
+            ORDER BY location ASC";
+    $stmt = $db->query($sql);
+    return $stmt->fetchAll(PDO::FETCH_COLUMN);
 }

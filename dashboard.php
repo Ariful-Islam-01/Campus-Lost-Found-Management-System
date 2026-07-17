@@ -12,8 +12,21 @@ require_once __DIR__ . '/db.php';
 
 $userId = $_SESSION['user_id'];
 $user = getUserById($userId);
-$lostItems = getLostItems();
-$foundItems = getFoundItems();
+
+// Extract filter criteria from GET parameters
+$filters = [
+    'search' => isset($_GET['search']) ? trim($_GET['search']) : '',
+    'category' => isset($_GET['category']) ? trim($_GET['category']) : '',
+    'location' => isset($_GET['location']) ? trim($_GET['location']) : '',
+    'date_range' => isset($_GET['date_range']) ? trim($_GET['date_range']) : ''
+];
+
+$allowedCategories = ['Electronics', 'Books & Stationery', 'Keys & Cards', 'Clothing & Accessories', 'Others'];
+$uniqueLocations = getUniqueLocations();
+
+$lostItems = getLostItems($filters);
+$foundItems = getFoundItems($filters);
+$filtersActive = !empty($filters['search']) || !empty($filters['category']) || !empty($filters['location']) || !empty($filters['date_range']);
 
 // Fallback if user session is invalid
 if (!$user) {
@@ -483,7 +496,165 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
       font-size: 0.9rem;
     }
 
+    /* Search & Filter Container */
+    .search-filter-container {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: var(--radius-md);
+      padding: 1.5rem;
+      margin-bottom: 3rem;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+      backdrop-filter: blur(12px);
+    }
+
+    .search-filter-form {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .filter-row {
+      display: grid;
+      grid-template-columns: 2fr 1.2fr 1.2fr 1.2fr;
+      gap: 1rem;
+    }
+
+    .filter-field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .filter-label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--clr-gray-400);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .filter-input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .filter-icon {
+      position: absolute;
+      left: 12px;
+      width: 16px;
+      height: 16px;
+      color: var(--clr-teal-400);
+      pointer-events: none;
+    }
+
+    .filter-input {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 0.65rem 0.75rem 0.65rem 2.25rem;
+      color: var(--clr-white);
+      font-family: var(--ff-base);
+      font-size: 0.9rem;
+      transition: all 0.25s ease;
+      outline: none;
+    }
+
+    .filter-input:focus {
+      border-color: var(--clr-teal-500);
+      background: rgba(255, 255, 255, 0.08);
+      box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.2);
+    }
+
+    .filter-select {
+      appearance: none;
+      cursor: pointer;
+      padding-right: 2rem;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%239ca3af'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+      background-size: 16px;
+    }
+
+    .filter-select option {
+      background-color: var(--clr-gray-900);
+      color: var(--clr-white);
+    }
+
+    .filter-actions {
+      display: flex;
+      gap: 0.75rem;
+      align-self: flex-end;
+    }
+
+    .btn-filter-submit {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: linear-gradient(135deg, var(--clr-teal-600), var(--clr-teal-500));
+      color: var(--clr-white);
+      border: none;
+      border-radius: 8px;
+      padding: 0.65rem 1.25rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      box-shadow: 0 4px 12px rgba(13, 148, 136, 0.2);
+    }
+
+    .btn-filter-submit:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(13, 148, 136, 0.3);
+      filter: brightness(1.1);
+    }
+
+    .btn-filter-reset {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: var(--clr-gray-300);
+      border-radius: 8px;
+      padding: 0.65rem 1.25rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.25s ease;
+    }
+
+    .btn-filter-reset:hover {
+      background: rgba(255, 255, 255, 0.12);
+      color: var(--clr-white);
+    }
+
     /* Responsive adjustments */
+    @media (max-width: 900px) {
+      .filter-row {
+        grid-template-columns: 1fr 1fr;
+      }
+      .filter-actions {
+        align-self: stretch;
+        margin-top: 0.5rem;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .filter-row {
+        grid-template-columns: 1fr;
+      }
+      .filter-actions {
+        width: 100%;
+      }
+      .btn-filter-submit, .btn-filter-reset {
+        flex: 1;
+        justify-content: center;
+      }
+    }
+
     @media (max-width: 768px) {
       .actions-grid {
         grid-template-columns: 1fr;
@@ -573,6 +744,94 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
       </div>
     </div>
 
+    <!-- Search Bar & Filter Controls -->
+    <div class="search-filter-container">
+      <form method="GET" action="dashboard.php" class="search-filter-form">
+        <div class="filter-row">
+          <!-- Keyword Search -->
+          <div class="filter-field">
+            <label for="searchQuery" class="filter-label">Keyword Search</label>
+            <div class="filter-input-wrapper">
+              <svg class="filter-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              <input type="text" id="searchQuery" name="search" value="<?php echo htmlspecialchars($filters['search'] ?? ''); ?>" placeholder="Search item name, description..." class="filter-input">
+            </div>
+          </div>
+
+          <!-- Category Filter -->
+          <div class="filter-field">
+            <label for="categoryFilter" class="filter-label">Category</label>
+            <div class="filter-input-wrapper">
+              <svg class="filter-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="7" height="9"></rect><rect x="14" y="3" width="7" height="5"></rect>
+                <rect x="14" y="12" width="7" height="9"></rect><rect x="3" y="16" width="7" height="5"></rect>
+              </svg>
+              <select id="categoryFilter" name="category" class="filter-input filter-select">
+                <option value="">All Categories</option>
+                <?php foreach ($allowedCategories as $cat): ?>
+                  <option value="<?php echo htmlspecialchars($cat); ?>" <?php echo ($filters['category'] === $cat) ? 'selected' : ''; ?>>
+                    <?php echo htmlspecialchars($cat); ?>
+                  </option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+          </div>
+
+          <!-- Location Filter -->
+          <div class="filter-field">
+            <label for="locationFilter" class="filter-label">Location</label>
+            <div class="filter-input-wrapper">
+              <svg class="filter-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle>
+              </svg>
+              <select id="locationFilter" name="location" class="filter-input filter-select">
+                <option value="">All Locations</option>
+                <?php foreach ($uniqueLocations as $loc): ?>
+                  <?php if (trim($loc) !== ''): ?>
+                    <option value="<?php echo htmlspecialchars($loc); ?>" <?php echo ($filters['location'] === $loc) ? 'selected' : ''; ?>>
+                      <?php echo htmlspecialchars($loc); ?>
+                    </option>
+                  <?php endif; ?>
+                <?php endforeach; ?>
+              </select>
+            </div>
+          </div>
+
+          <!-- Date Range Filter -->
+          <div class="filter-field">
+            <label for="dateRangeFilter" class="filter-label">Date Range</label>
+            <div class="filter-input-wrapper">
+              <svg class="filter-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>
+              </svg>
+              <select id="dateRangeFilter" name="date_range" class="filter-input filter-select">
+                <option value="">All Dates</option>
+                <option value="today" <?php echo ($filters['date_range'] === 'today') ? 'selected' : ''; ?>>Today</option>
+                <option value="7days" <?php echo ($filters['date_range'] === '7days') ? 'selected' : ''; ?>>Last 7 Days</option>
+                <option value="30days" <?php echo ($filters['date_range'] === '30days') ? 'selected' : ''; ?>>Last 30 Days</option>
+                <option value="older" <?php echo ($filters['date_range'] === 'older') ? 'selected' : ''; ?>>Older</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="filter-actions">
+          <button type="submit" class="btn-filter-submit">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            Apply Filters
+          </button>
+          <?php if ($filtersActive): ?>
+            <a href="dashboard.php" class="btn-filter-reset">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              Clear Filters
+            </a>
+          <?php endif; ?>
+        </div>
+      </form>
+    </div>
+
     <!-- Reports Section -->
     <div class="reports-section">
       <h2 class="reports-title">
@@ -633,7 +892,11 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
         <?php else: ?>
           <div class="no-reports-msg">
             <svg style="margin: 0 auto 1rem; display: block; color: var(--clr-gray-600);" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-            No active lost reports found. If you lost something, report it to show here!
+            <?php if ($filtersActive): ?>
+              No lost reports match your filter criteria. Try adjusting or clearing filters!
+            <?php else: ?>
+              No active lost reports found. If you lost something, report it to show here!
+            <?php endif; ?>
           </div>
         <?php endif; ?>
       </div>
@@ -699,7 +962,11 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
         <?php else: ?>
           <div class="no-reports-msg">
             <svg style="margin: 0 auto 1rem; display: block; color: var(--clr-gray-600);" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-            No active found reports found. If you found something, report it to show here!
+            <?php if ($filtersActive): ?>
+              No found reports match your filter criteria. Try adjusting or clearing filters!
+            <?php else: ?>
+              No active found reports found. If you found something, report it to show here!
+            <?php endif; ?>
           </div>
         <?php endif; ?>
       </div>
