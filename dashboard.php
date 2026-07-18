@@ -15,10 +15,10 @@ $user = getUserById($userId);
 
 // Extract filter criteria from GET parameters
 $filters = [
-    'search' => isset($_GET['search']) ? trim($_GET['search']) : '',
-    'category' => isset($_GET['category']) ? trim($_GET['category']) : '',
-    'location' => isset($_GET['location']) ? trim($_GET['location']) : '',
-    'date_range' => isset($_GET['date_range']) ? trim($_GET['date_range']) : ''
+    'search' => (isset($_GET['search']) && is_string($_GET['search'])) ? trim($_GET['search']) : '',
+    'category' => (isset($_GET['category']) && is_string($_GET['category'])) ? trim($_GET['category']) : '',
+    'location' => (isset($_GET['location']) && is_string($_GET['location'])) ? trim($_GET['location']) : '',
+    'date_range' => (isset($_GET['date_range']) && is_string($_GET['date_range'])) ? trim($_GET['date_range']) : ''
 ];
 
 $allowedCategories = ['Electronics', 'Books & Stationery', 'Keys & Cards', 'Clothing & Accessories', 'Others'];
