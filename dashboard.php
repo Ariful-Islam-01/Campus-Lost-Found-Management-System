@@ -22,8 +22,18 @@ $filters = [
 ];
 
 $allowedCategories = ['Electronics', 'Books & Stationery', 'Keys & Cards', 'Clothing & Accessories', 'Others'];
+$allowedDateRanges = ['today', '7days', '30days', 'older'];
 $uniqueLocations = getUniqueLocations();
 
+if ($filters['category'] !== '' && !in_array($filters['category'], $allowedCategories, true)) {
+    $filters['category'] = '';
+}
+if ($filters['location'] !== '' && !in_array($filters['location'], $uniqueLocations, true)) {
+    $filters['location'] = '';
+}
+if ($filters['date_range'] !== '' && !in_array($filters['date_range'], $allowedDateRanges, true)) {
+    $filters['date_range'] = '';
+}
 $lostItems = getLostItems($filters);
 $foundItems = getFoundItems($filters);
 $filtersActive = !empty($filters['search']) || !empty($filters['category']) || !empty($filters['location']) || !empty($filters['date_range']);
