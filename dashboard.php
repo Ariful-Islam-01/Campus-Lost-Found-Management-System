@@ -38,13 +38,23 @@ $lostItems = getLostItems($filters);
 $foundItems = getFoundItems($filters);
 $filtersActive = !empty($filters['search']) || !empty($filters['category']) || !empty($filters['location']) || !empty($filters['date_range']);
 
-// Fallback if user session is invalid
+// Setup filters array from GET query parameters
+$filters = [
+  'search' => isset($_GET['search']) ? trim($_GET['search']) : '',
+  'category' => isset($_GET['category']) ? trim($_GET['category']) : '',
+  'location' => isset($_GET['location']) ? trim($_GET['location']) : '',
+  'date_range' => isset($_GET['date_range']) ? trim($_GET['date_range']) : ''
+];
+
+$lostItems = getLostItems($filters);
+$foundItems = getFoundItems($filters);
+$locations = getUniqueLocations();
+
 if (!$user) {
   header('Location: login.php?action=logout');
   exit;
 }
 
-// Handle logout action
 if (isset($_GET['action']) && $_GET['action'] === 'logout') {
   $_SESSION = [];
   if (ini_get("session.use_cookies")) {
@@ -732,6 +742,146 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
 
       .reports-grid {
         grid-template-columns: 1fr;
+      }
+    }
+
+    /* Search and Filter section */
+    .filter-card {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: var(--radius-lg);
+      padding: 1.75rem 2rem;
+      margin: 0.5rem 0 2.5rem;
+      box-shadow: var(--shadow-lg);
+      backdrop-filter: blur(12px);
+    }
+
+    .filter-form-grid {
+      display: grid;
+      grid-template-columns: 1.5fr 1fr 1fr 1fr auto;
+      gap: 1.25rem;
+      align-items: flex-end;
+    }
+
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .filter-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--clr-gray-400);
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .filter-label svg {
+      width: 13px;
+      height: 13px;
+      color: var(--clr-teal-400);
+    }
+
+    .filter-input {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 8px;
+      color: var(--clr-white);
+      padding: 0.65rem 0.95rem;
+      font-size: 0.88rem;
+      font-family: var(--ff-base);
+      width: 100%;
+      outline: none;
+      transition: all 0.25s ease;
+    }
+
+    .filter-input:focus {
+      border-color: var(--clr-teal-500);
+      background: rgba(255, 255, 255, 0.08);
+      box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.15);
+    }
+
+    .filter-input::placeholder {
+      color: var(--clr-gray-500);
+    }
+
+    select.filter-input option {
+      background: var(--clr-gray-900);
+      color: var(--clr-white);
+    }
+
+    .btn-filter-action {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.65rem 1.5rem;
+      background: linear-gradient(135deg, var(--clr-teal-600), var(--clr-teal-500));
+      border: none;
+      border-radius: 8px;
+      color: var(--clr-white);
+      font-size: 0.88rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      height: 38px;
+      text-decoration: none;
+    }
+
+    .btn-filter-action:hover {
+      filter: brightness(1.1);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(13, 148, 136, 0.25);
+    }
+
+    .btn-filter-reset {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: var(--clr-gray-300);
+    }
+
+    .btn-filter-reset:hover {
+      background: rgba(255, 255, 255, 0.12);
+      color: var(--clr-white);
+      border-color: rgba(255, 255, 255, 0.25);
+      transform: translateY(-1px);
+    }
+
+    .btn-detail-link:hover {
+      color: var(--clr-amber-400) !important;
+      transform: translateX(3px);
+    }
+
+    @media (max-width: 1024px) {
+      .filter-form-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .filter-actions-group {
+        grid-column: span 2;
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.75rem;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .filter-form-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .filter-actions-group {
+        grid-column: span 1;
+        width: 100%;
+        display: flex;
+      }
+
+      .btn-filter-action {
+        flex: 1;
       }
     }
   </style>
