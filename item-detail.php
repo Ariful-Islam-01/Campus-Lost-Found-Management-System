@@ -54,7 +54,6 @@ $photoPath = $item['photo_path'];
 $contactName = $isLost ? $item['reporter_name'] : $item['finder_name'];
 $contactEmail = $isLost ? $item['reporter_email'] : $item['finder_email'];
 $contactPhone = $isLost ? $item['reporter_phone'] : $item['finder_phone'];
-$contactPhoto = $isLost ? $item['reporter_photo'] : $item['finder_photo'];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -83,7 +82,7 @@ $contactPhoto = $isLost ? $item['reporter_photo'] : $item['finder_photo'];
       --clr-emerald-400: #34d399;
       --clr-emerald-500: #10b981;
       --clr-red-400: #f87171;
-      --clr-white: #white;
+      --clr-white: #ffffff;
       --clr-gray-100: #f3f4f6;
       --clr-gray-200: #e5e7eb;
       --clr-gray-300: #d1d5db;
@@ -91,7 +90,6 @@ $contactPhoto = $isLost ? $item['reporter_photo'] : $item['finder_photo'];
       --clr-gray-500: #6b7280;
       --clr-gray-800: #1f2937;
       --clr-gray-900: #111827;
-      --clr-white: #ffffff;
       --ff-base: 'Inter', system-ui, sans-serif;
       --radius-md: 12px;
       --radius-lg: 20px;
@@ -386,11 +384,6 @@ $contactPhoto = $isLost ? $item['reporter_photo'] : $item['finder_photo'];
       padding-bottom: 1.25rem;
     }
 
-    .item-title-wrapper {
-      display: flex;
-      flex-direction: column;
-    }
-
     .item-detail-title {
       font-size: 1.85rem;
       font-weight: 800;
@@ -475,7 +468,7 @@ $contactPhoto = $isLost ? $item['reporter_photo'] : $item['finder_photo'];
       font-weight: 700;
       letter-spacing: 0.08em;
       color: var(--clr-amber-400);
-      margin-bottom: 1.25rem;
+      margin-bottom: 1rem;
       display: flex;
       align-items: center;
       gap: 0.5rem;
@@ -762,22 +755,7 @@ $contactPhoto = $isLost ? $item['reporter_photo'] : $item['finder_photo'];
             </svg>
             Contact Information
           </span>
-          
-          <div class="contact-profile-header" style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.25rem;">
-            <div class="contact-avatar" style="width: 48px; height: 48px; border-radius: 50%; border: 2px solid var(--clr-amber-400); overflow: hidden; display: flex; align-items: center; justify-content: center; background: var(--clr-gray-800); flex-shrink: 0;">
-              <?php if (!empty($contactPhoto) && file_exists(__DIR__ . '/' . $contactPhoto)): ?>
-                <img src="<?php echo htmlspecialchars($contactPhoto); ?>" alt="Contact Profile Picture" style="width: 100%; height: 100%; object-fit: cover;" />
-              <?php else: ?>
-                <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, var(--clr-teal-600), var(--clr-amber-500)); color: var(--clr-white); font-size: 1.2rem; font-weight: 700; text-transform: uppercase;">
-                  <?php echo htmlspecialchars(substr($contactName, 0, 1)); ?>
-                </div>
-              <?php endif; ?>
-            </div>
-            <div class="contact-name-group">
-              <h3 class="contact-reporter-name" style="margin: 0; font-size: 1.1rem; font-weight: 700; color: var(--clr-white);"><?php echo htmlspecialchars($contactName); ?></h3>
-              <span style="font-size: 0.75rem; color: var(--clr-gray-400); font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em;"><?php echo $isLost ? 'Reporter' : 'Finder'; ?></span>
-            </div>
-          </div>
+          <h3 class="contact-reporter-name"><?php echo htmlspecialchars($contactName); ?></h3>
 
           <div class="contact-detail-row">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
