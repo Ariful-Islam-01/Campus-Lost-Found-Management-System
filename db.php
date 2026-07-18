@@ -52,6 +52,37 @@ function initDatabase() {
     if (!$checkPhoto) {
         $db->exec("ALTER TABLE users ADD COLUMN profile_photo VARCHAR(255) NULL AFTER phone");
     }
+
+    // Create lost_items table if not exists
+    $sqlLost = "CREATE TABLE IF NOT EXISTS lost_items (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        item_name VARCHAR(255) NOT NULL,
+        category VARCHAR(100) NOT NULL,
+        description TEXT NOT NULL,
+        last_seen_location VARCHAR(255) NOT NULL,
+        date_lost DATE NOT NULL,
+        photo_path VARCHAR(255) NULL,
+        status VARCHAR(50) NOT NULL DEFAULT 'Lost',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+    $db->exec($sqlLost);
+
+    // Create found_items table if not exists
+    $sqlFound = "CREATE TABLE IF NOT EXISTS found_items (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        item_name VARCHAR(255) NOT NULL,
+        category VARCHAR(100) NOT NULL,
+        description TEXT NOT NULL,
+        pickup_location VARCHAR(255) NOT NULL,
+        photo_path VARCHAR(255) NOT NULL,
+        status VARCHAR(50) NOT NULL DEFAULT 'Found',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+    $db->exec($sqlFound);
 }
 
 // Auto-initialize the tables
@@ -235,12 +266,119 @@ function getFoundItems($filters = []) {
     return $stmt->fetchAll();
 }
 
-function getUniqueLocations() {
+function getPaginatedItems($type, $category, $search, $limit, $offset) {
     $db = getDBConnection();
-    $sql = "SELECT DISTINCT last_seen_location AS location FROM lost_items WHERE last_seen_location IS NOT NULL AND last_seen_location <> ''
-            UNION
-            SELECT DISTINCT pickup_location AS location FROM found_items WHERE pickup_location IS NOT NULL AND pickup_location <> ''
-            ORDER BY location ASC";
-    $stmt = $db->query($sql);
-    return $stmt->fetchAll(PDO::FETCH_COLUMN);
+    
+    $queries = [];
+    $lostSearchCond = "";
+    $foundSearchCond = "";
+    if (!empty($search)) {
+        $lostSearchCond = " AND (item_name LIKE :search OR description LIKE :search OR last_seen_location LIKE :search) ";
+        $foundSearchCond = " AND (item_name LIKE :search OR description LIKE :search OR pickup_location LIKE :search) ";
+    }
+    
+    $catCond = "";
+    if (!empty($category)) {
+        $catCond = " AND category = :category ";
+    }
+
+    if ($type === 'All' || $type === 'Lost') {
+        $lostQuery = "SELECT 
+            'Lost' AS type,
+            li.id,
+            li.user_id,
+            li.item_name,
+            li.category,
+            li.description,
+            li.last_seen_location AS location,
+            li.date_lost AS item_date,
+            li.photo_path,
+            li.status,
+            li.created_at,
+            u.name as reporter_name,
+            u.email as reporter_email,
+            u.phone as reporter_phone
+        FROM lost_items li
+        JOIN users u ON li.user_id = u.id
+        WHERE 1=1" . $catCond . $lostSearchCond;
+        $queries[] = $lostQuery;
+    }
+    
+    if ($type === 'All' || $type === 'Found') {
+        $foundQuery = "SELECT 
+            'Found' AS type,
+            fi.id,
+            fi.user_id,
+            fi.item_name,
+            fi.category,
+            fi.description,
+            fi.pickup_location AS location,
+            fi.created_at AS item_date,
+            fi.photo_path,
+            fi.status,
+            fi.created_at,
+            u.name as reporter_name,
+            u.email as reporter_email,
+            u.phone as reporter_phone
+        FROM found_items fi
+        JOIN users u ON fi.user_id = u.id
+        WHERE 1=1" . $catCond . $foundSearchCond;
+        $queries[] = $foundQuery;
+    }
+    
+    $sql = implode(" UNION ALL ", $queries);
+    $sql .= " ORDER BY created_at DESC LIMIT :limit OFFSET :offset";
+    
+    $stmt = $db->prepare($sql);
+    
+    if (!empty($category)) {
+        $stmt->bindValue(':category', $category, PDO::PARAM_STR);
+    }
+    if (!empty($search)) {
+        $stmt->bindValue(':search', '%' . $search . '%', PDO::PARAM_STR);
+    }
+    $stmt->bindValue(':limit', (int)$limit, PDO::PARAM_INT);
+    $stmt->bindValue(':offset', (int)$offset, PDO::PARAM_INT);
+    
+    $stmt->execute();
+    return $stmt->fetchAll();
 }
+
+function getTotalItemsCount($type, $category, $search) {
+    $db = getDBConnection();
+    
+    $queries = [];
+    $lostSearchCond = "";
+    $foundSearchCond = "";
+    if (!empty($search)) {
+        $lostSearchCond = " AND (item_name LIKE :search OR description LIKE :search OR last_seen_location LIKE :search) ";
+        $foundSearchCond = " AND (item_name LIKE :search OR description LIKE :search OR pickup_location LIKE :search) ";
+    }
+    
+    $catCond = "";
+    if (!empty($category)) {
+        $catCond = " AND category = :category ";
+    }
+
+    if ($type === 'All' || $type === 'Lost') {
+        $queries[] = "SELECT id FROM lost_items WHERE 1=1" . $catCond . $lostSearchCond;
+    }
+    
+    if ($type === 'All' || $type === 'Found') {
+        $queries[] = "SELECT id FROM found_items WHERE 1=1" . $catCond . $foundSearchCond;
+    }
+    
+    $sql = "SELECT COUNT(*) FROM (" . implode(" UNION ALL ", $queries) . ") AS combined";
+    $stmt = $db->prepare($sql);
+    
+    if (!empty($category)) {
+        $stmt->bindValue(':category', $category, PDO::PARAM_STR);
+    }
+    if (!empty($search)) {
+        $stmt->bindValue(':search', '%' . $search . '%', PDO::PARAM_STR);
+    }
+    
+    $stmt->execute();
+    return (int)$stmt->fetchColumn();
+}
+

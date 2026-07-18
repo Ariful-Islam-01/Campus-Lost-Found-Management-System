@@ -403,15 +403,57 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
       font-size: 0.68rem;
       font-weight: 700;
       text-transform: uppercase;
-      background: rgba(239, 68, 68, 0.9);
       color: white;
-      border: 1px solid rgba(239, 68, 68, 0.4);
       z-index: 2;
     }
 
+    .report-badge.badge-lost {
+      background: rgba(239, 68, 68, 0.9);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+    }
+
     .report-badge.badge-found {
+      background: rgba(59, 130, 246, 0.9);
+      border: 1px solid rgba(59, 130, 246, 0.4);
+    }
+
+    .report-badge.badge-claimed {
+      background: rgba(249, 115, 22, 0.9);
+      border: 1px solid rgba(249, 115, 22, 0.4);
+    }
+
+    .report-badge.badge-returned {
       background: rgba(16, 185, 129, 0.9);
-      border-color: rgba(16, 185, 129, 0.4);
+      border: 1px solid rgba(16, 185, 129, 0.4);
+    }
+
+    /* Status-specific card borders */
+    .report-card.status-lost {
+      border-color: rgba(239, 68, 68, 0.15);
+    }
+    .report-card.status-lost .report-thumbnail-container {
+      border-bottom-color: rgba(239, 68, 68, 0.1);
+    }
+
+    .report-card.status-found {
+      border-color: rgba(59, 130, 246, 0.15);
+    }
+    .report-card.status-found .report-thumbnail-container {
+      border-bottom-color: rgba(59, 130, 246, 0.1);
+    }
+
+    .report-card.status-claimed {
+      border-color: rgba(249, 115, 22, 0.15);
+    }
+    .report-card.status-claimed .report-thumbnail-container {
+      border-bottom-color: rgba(249, 115, 22, 0.1);
+    }
+
+    .report-card.status-returned {
+      border-color: rgba(16, 185, 129, 0.15);
+    }
+    .report-card.status-returned .report-thumbnail-container {
+      border-bottom-color: rgba(16, 185, 129, 0.1);
     }
 
     .report-category-badge {
@@ -751,6 +793,14 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
           <h3 class="action-title">Manage Profile</h3>
           <p class="action-desc">Keep your details up to date. Edit your name, contact phone number, or upload a custom avatar.</p>
         </a>
+
+        <a href="listings.php" class="action-card">
+          <div class="action-icon icon-found" style="background: rgba(13, 148, 136, 0.15); color: var(--clr-teal-400);">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/></svg>
+          </div>
+          <h3 class="action-title">Browse Listings</h3>
+          <p class="action-desc">View all lost and found reports. Search, filter by category, and browse items using page navigation.</p>
+        </a>
       </div>
     </div>
 
@@ -851,9 +901,9 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
       <div class="reports-grid">
         <?php if (!empty($lostItems)): ?>
           <?php foreach ($lostItems as $item): ?>
-            <div class="report-card">
+            <div class="report-card status-<?php echo strtolower($item['status']); ?>">
               <div class="report-thumbnail-container">
-                <span class="report-badge"><?php echo htmlspecialchars($item['status']); ?></span>
+                <span class="report-badge badge-<?php echo strtolower($item['status']); ?>"><?php echo htmlspecialchars($item['status']); ?></span>
                 <span class="report-category-badge"><?php echo htmlspecialchars($item['category']); ?></span>
                 <?php 
                 $realPhotoPath = __DIR__ . DIRECTORY_SEPARATOR . str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $item['photo_path']);
@@ -921,9 +971,9 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
       <div class="reports-grid">
         <?php if (!empty($foundItems)): ?>
           <?php foreach ($foundItems as $item): ?>
-            <div class="report-card" style="border-color: rgba(16, 185, 129, 0.15);">
-              <div class="report-thumbnail-container" style="border-bottom-color: rgba(16, 185, 129, 0.1);">
-                <span class="report-badge badge-found"><?php echo htmlspecialchars($item['status']); ?></span>
+            <div class="report-card status-<?php echo strtolower($item['status']); ?>">
+              <div class="report-thumbnail-container">
+                <span class="report-badge badge-<?php echo strtolower($item['status']); ?>"><?php echo htmlspecialchars($item['status']); ?></span>
                 <span class="report-category-badge" style="background: rgba(16, 185, 129, 0.8);"><?php echo htmlspecialchars($item['category']); ?></span>
                 <?php 
                 $realPhotoPath = __DIR__ . DIRECTORY_SEPARATOR . str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $item['photo_path']);
