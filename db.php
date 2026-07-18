@@ -115,8 +115,11 @@ function getLostItems($filters = []) {
     $params = [];
     
     if (!empty($filters['search'])) {
-        $where[] = "(li.item_name LIKE :search OR li.description LIKE :search OR u.name LIKE :search)";
-        $params['search'] = '%' . $filters['search'] . '%';
+        $where[] = "(li.item_name LIKE :search_item OR li.description LIKE :search_desc OR u.name LIKE :search_user)";
+        $search = '%' . $filters['search'] . '%';
+        $params['search_item'] = $search;
+        $params['search_desc'] = $search;
+        $params['search_user'] = $search;
     }
     
     if (!empty($filters['category'])) {
