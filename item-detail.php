@@ -41,15 +41,6 @@ if (!$item) {
   exit;
 }
 
-// Handle claim submission POST
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'submit_claim') {
-  if ($itemType === 'found' && $item['user_id'] !== $userId) {
-    submitClaim($userId, $itemId);
-    header("Location: item-detail.php?id=$itemId&type=found");
-    exit;
-  }
-}
-
 // Process details specific to the report type
 $isLost = ($itemType === 'lost');
 $itemName = $item['item_name'];
@@ -63,12 +54,6 @@ $photoPath = $item['photo_path'];
 $contactName = $isLost ? $item['reporter_name'] : $item['finder_name'];
 $contactEmail = $isLost ? $item['reporter_email'] : $item['finder_email'];
 $contactPhone = $isLost ? $item['reporter_phone'] : $item['finder_phone'];
-$contactPhoto = $isLost ? $item['reporter_photo'] : $item['finder_photo'];
-
-$alreadyClaimed = false;
-if ($itemType === 'found') {
-  $alreadyClaimed = hasUserClaimedItem($userId, $itemId);
-}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -483,7 +468,7 @@ if ($itemType === 'found') {
       font-weight: 700;
       letter-spacing: 0.08em;
       color: var(--clr-amber-400);
-      margin-bottom: 1.25rem;
+      margin-bottom: 1rem;
       display: flex;
       align-items: center;
       gap: 0.5rem;
@@ -520,12 +505,6 @@ if ($itemType === 'found') {
       display: flex;
       gap: 0.75rem;
       margin-top: 1.25rem;
-    }
-
-    .btn-claim:hover {
-      box-shadow: 0 6px 20px rgba(13, 148, 136, 0.45);
-      transform: translateY(-1px);
-      filter: brightness(1.1);
     }
 
     .btn-contact {
@@ -776,29 +755,7 @@ if ($itemType === 'found') {
             </svg>
             Contact Information
           </span>
-
-          <div class="contact-profile-header"
-            style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.25rem;">
-            <div class="contact-avatar"
-              style="width: 48px; height: 48px; border-radius: 50%; border: 2px solid var(--clr-amber-400); overflow: hidden; display: flex; align-items: center; justify-content: center; background: var(--clr-gray-800); flex-shrink: 0;">
-              <?php if (!empty($contactPhoto) && file_exists(__DIR__ . '/' . $contactPhoto)): ?>
-                <img src="<?php echo htmlspecialchars($contactPhoto); ?>" alt="Contact Profile Picture"
-                  style="width: 100%; height: 100%; object-fit: cover;" />
-              <?php else: ?>
-                <div
-                  style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, var(--clr-teal-600), var(--clr-amber-500)); color: var(--clr-white); font-size: 1.2rem; font-weight: 700; text-transform: uppercase;">
-                  <?php echo htmlspecialchars(substr($contactName, 0, 1)); ?>
-                </div>
-              <?php endif; ?>
-            </div>
-            <div class="contact-name-group">
-              <h3 class="contact-reporter-name"
-                style="margin: 0; font-size: 1.15rem; font-weight: 700; color: var(--clr-white);">
-                <?php echo htmlspecialchars($contactName); ?></h3>
-              <span
-                style="font-size: 0.75rem; color: var(--clr-gray-400); font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em;"><?php echo $isLost ? 'Reporter' : 'Finder'; ?></span>
-            </div>
-          </div>
+          <h3 class="contact-reporter-name"><?php echo htmlspecialchars($contactName); ?></h3>
 
           <div class="contact-detail-row">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
@@ -843,36 +800,6 @@ if ($itemType === 'found') {
           </div>
 
         </div>
-
-        <!-- Claim Found Item Section -->
-        <?php if ($itemType === 'found' && $item['user_id'] !== $userId): ?>
-          <div class="claim-item-section" style="margin-top: 1.5rem;">
-            <form method="POST" action="item-detail.php?id=<?php echo $itemId; ?>&type=found">
-              <input type="hidden" name="action" value="submit_claim" />
-              <?php if ($alreadyClaimed): ?>
-                <button type="button" class="btn-claim" disabled
-                  style="width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.85rem; border-radius: var(--radius-md); font-size: 0.95rem; font-weight: 700; border: 1px solid rgba(255, 255, 255, 0.08); background: rgba(255, 255, 255, 0.04); color: var(--clr-gray-400); cursor: not-allowed; box-sizing: border-box;">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-                    stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-                    <polyline points="22 4 12 14.01 9 11.01" />
-                  </svg>
-                  Claim Submitted
-                </button>
-              <?php else: ?>
-                <button type="submit" class="btn-claim"
-                  style="width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.85rem; border-radius: var(--radius-md); font-size: 0.95rem; font-weight: 700; border: none; background: linear-gradient(135deg, var(--clr-teal-600), var(--clr-teal-400)); color: var(--clr-white); cursor: pointer; transition: all 0.25s ease; box-shadow: 0 4px 14px rgba(13, 148, 136, 0.3); box-sizing: border-box;">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-                    stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
-                    <line x1="7" y1="7" x2="7.01" y2="7" />
-                  </svg>
-                  Claim Found Item
-                </button>
-              <?php endif; ?>
-            </form>
-          </div>
-        <?php endif; ?>
 
       </div>
 
