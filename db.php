@@ -237,9 +237,9 @@ function getFoundItems($filters = []) {
 
 function getUniqueLocations() {
     $db = getDBConnection();
-    $sql = "SELECT DISTINCT last_seen_location AS location FROM lost_items
+    $sql = "SELECT DISTINCT last_seen_location AS location FROM lost_items WHERE last_seen_location IS NOT NULL AND last_seen_location <> ''
             UNION
-            SELECT DISTINCT pickup_location AS location FROM found_items
+            SELECT DISTINCT pickup_location AS location FROM found_items WHERE pickup_location IS NOT NULL AND pickup_location <> ''
             ORDER BY location ASC";
     $stmt = $db->query($sql);
     return $stmt->fetchAll(PDO::FETCH_COLUMN);
