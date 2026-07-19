@@ -38,6 +38,7 @@ $lostItems = getLostItems($filters);
 $foundItems = getFoundItems($filters);
 $filtersActive = !empty($filters['search']) || !empty($filters['category']) || !empty($filters['location']) || !empty($filters['date_range']);
 $myClaims = getClaimsByUser($userId);
+$isAdmin = isset($_SESSION['user_role']) && $_SESSION['user_role'] === 'admin';
 $claimStats = ['total' => 0, 'pending' => 0, 'approved' => 0, 'rejected' => 0];
 foreach ($myClaims as $claim) {
   $claimStats['total']++;
@@ -1266,6 +1267,21 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
           <h3 class="action-title">My Claims</h3>
           <p class="action-desc">Check the latest status of each claim you have submitted for found items.</p>
         </a>
+
+        <?php if ($isAdmin): ?>
+          <a href="admin-dashboard.php" class="action-card">
+            <div class="action-icon icon-found" style="background: rgba(59, 130, 246, 0.15); color: #60a5fa;">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 6h16M4 12h16M4 18h16" />
+                <circle cx="8" cy="6" r="1.5" />
+                <circle cx="16" cy="12" r="1.5" />
+                <circle cx="10" cy="18" r="1.5" />
+              </svg>
+            </div>
+            <h3 class="action-title">Admin Dashboard</h3>
+            <p class="action-desc">Open the management view with live counts and a recent activity feed.</p>
+          </a>
+        <?php endif; ?>
       </div>
     </div>
 

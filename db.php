@@ -46,6 +46,11 @@ function initDatabase()
 
     $db->exec($sql);
 
+    $checkRole = $db->query("SHOW COLUMNS FROM users LIKE 'role'")->fetch();
+    if (!$checkRole) {
+        $db->exec("ALTER TABLE users ADD COLUMN role VARCHAR(20) NOT NULL DEFAULT 'user' AFTER email");
+    }
+
     // Dynamically check and add phone column if not exists
     $checkPhone = $db->query("SHOW COLUMNS FROM users LIKE 'phone'")->fetch();
     if (!$checkPhone) {
@@ -107,31 +112,19 @@ function initDatabase()
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
     $db->exec($sqlClaims);
 
-    $sqlAudit = "CREATE TABLE IF NOT EXISTS admin_audit_logs (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        admin_user_id INT NOT NULL,
-        action_type VARCHAR(50) NOT NULL,
-        entity_type VARCHAR(50) NOT NULL,
-        entity_id INT NOT NULL,
-        action_details TEXT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (admin_user_id) REFERENCES users(id) ON DELETE CASCADE,
-        INDEX idx_audit_admin_user_id (admin_user_id),
-        INDEX idx_audit_entity (entity_type, entity_id),
-        INDEX idx_audit_created_at (created_at)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
-    $db->exec($sqlAudit);
-
-    foreach (['lost_items', 'found_items'] as $table) {
-        $checkModeration = $db->query("SHOW COLUMNS FROM {$table} LIKE 'moderation_status'")->fetch();
-        if (!$checkModeration) {
-            $db->exec("ALTER TABLE {$table} ADD COLUMN moderation_status VARCHAR(20) NOT NULL DEFAULT 'Approved' AFTER status");
-        }
-
-        $checkModeratedAt = $db->query("SHOW COLUMNS FROM {$table} LIKE 'moderated_at'")->fetch();
-        if (!$checkModeratedAt) {
-            $db->exec("ALTER TABLE {$table} ADD COLUMN moderated_at TIMESTAMP NULL DEFAULT NULL AFTER moderation_status");
-        }
+    $adminEmail = 'admin@campus.local';
+    $adminPassword = 'Admin@1234';
+    $adminUser = getUserByEmail($adminEmail);
+    if (!$adminUser) {
+        $stmt = $db->prepare("INSERT INTO users (name, email, role, password_hash, is_verified) VALUES (:name, :email, 'admin', :password_hash, 1)");
+        $stmt->execute([
+            'name' => 'Campus Admin',
+            'email' => $adminEmail,
+            'password_hash' => password_hash($adminPassword, PASSWORD_DEFAULT)
+        ]);
+    } elseif (($adminUser['role'] ?? 'user') !== 'admin') {
+        $stmt = $db->prepare("UPDATE users SET role = 'admin', is_verified = 1 WHERE id = :id");
+        $stmt->execute(['id' => $adminUser['id']]);
     }
 }
 
@@ -520,187 +513,103 @@ function getClaimsByUser($userId)
     return $stmt->fetchAll();
 }
 
-function isAdminUser($user)
-{
-    return isset($user['role']) && $user['role'] === 'admin';
-}
-
-function logAdminAction($adminUserId, $actionType, $entityType, $entityId, $details = null)
-{
-    $db = getDBConnection();
-    $stmt = $db->prepare("INSERT INTO admin_audit_logs (admin_user_id, action_type, entity_type, entity_id, action_details) VALUES (:admin_user_id, :action_type, :entity_type, :entity_id, :action_details)");
-    return $stmt->execute([
-        'admin_user_id' => $adminUserId,
-        'action_type' => $actionType,
-        'entity_type' => $entityType,
-        'entity_id' => $entityId,
-        'action_details' => $details
-    ]);
-}
-
-function getAdminAuditLogs($limit = 10)
-{
-    $db = getDBConnection();
-    $stmt = $db->prepare("SELECT al.*, u.name AS admin_name, u.email AS admin_email FROM admin_audit_logs al JOIN users u ON al.admin_user_id = u.id ORDER BY al.created_at DESC LIMIT :limit");
-    $stmt->bindValue(':limit', (int)$limit, PDO::PARAM_INT);
-    $stmt->execute();
-    return $stmt->fetchAll();
-}
-
-function getReportByTypeAndId($reportType, $reportId)
-{
-    $db = getDBConnection();
-    if ($reportType === 'lost') {
-        $stmt = $db->prepare("SELECT li.*, u.name AS reporter_name, u.email AS reporter_email, u.phone AS reporter_phone FROM lost_items li JOIN users u ON li.user_id = u.id WHERE li.id = :id");
-    } else {
-        $stmt = $db->prepare("SELECT fi.*, u.name AS reporter_name, u.email AS reporter_email, u.phone AS reporter_phone FROM found_items fi JOIN users u ON fi.user_id = u.id WHERE fi.id = :id");
-    }
-    $stmt->execute(['id' => $reportId]);
-    return $stmt->fetch();
-}
-
-function getAllReports($filters = [])
-{
-    $db = getDBConnection();
-    $type = isset($filters['type']) ? strtolower((string)$filters['type']) : 'all';
-    $status = isset($filters['status']) ? trim((string)$filters['status']) : '';
-    $search = isset($filters['search']) ? trim((string)$filters['search']) : '';
-
-    $queries = [];
-    $params = [];
-
-    $searchCondLost = '';
-    $searchCondFound = '';
-    if ($search !== '') {
-        $searchCondLost = ' AND (li.item_name LIKE :search OR li.description LIKE :search OR li.last_seen_location LIKE :search OR u.name LIKE :search)';
-        $searchCondFound = ' AND (fi.item_name LIKE :search OR fi.description LIKE :search OR fi.pickup_location LIKE :search OR u.name LIKE :search)';
-        $params['search'] = '%' . $search . '%';
-    }
-
-    $statusCondLost = '';
-    $statusCondFound = '';
-    if ($status !== '') {
-        $statusCondLost = ' AND li.moderation_status = :status';
-        $statusCondFound = ' AND fi.moderation_status = :status';
-        $params['status'] = $status;
-    }
-
-    if ($type === 'all' || $type === 'lost') {
-        $queries[] = "SELECT
-            'lost' AS report_type,
-            li.id,
-            li.user_id,
-            li.item_name,
-            li.category,
-            li.description,
-            li.last_seen_location AS location,
-            li.date_lost AS report_date,
-            li.photo_path,
-            li.status,
-            li.moderation_status,
-            li.moderated_at,
-            li.created_at AS report_created_at,
-            u.name AS reporter_name,
-            u.email AS reporter_email,
-            u.phone AS reporter_phone
-        FROM lost_items li
-        JOIN users u ON li.user_id = u.id
-        WHERE 1=1" . $statusCondLost . $searchCondLost;
-    }
-
-    if ($type === 'all' || $type === 'found') {
-        $queries[] = "SELECT
-            'found' AS report_type,
-            fi.id,
-            fi.user_id,
-            fi.item_name,
-            fi.category,
-            fi.description,
-            fi.pickup_location AS location,
-            fi.created_at AS report_date,
-            fi.photo_path,
-            fi.status,
-            fi.moderation_status,
-            fi.moderated_at,
-            fi.created_at AS report_created_at,
-            u.name AS reporter_name,
-            u.email AS reporter_email,
-            u.phone AS reporter_phone
-        FROM found_items fi
-        JOIN users u ON fi.user_id = u.id
-        WHERE 1=1" . $statusCondFound . $searchCondFound;
-    }
-
-    $sql = implode(' UNION ALL ', $queries) . ' ORDER BY report_created_at DESC';
-    $stmt = $db->prepare($sql);
-    foreach ($params as $key => $value) {
-        $stmt->bindValue(':' . $key, $value, PDO::PARAM_STR);
-    }
-    $stmt->execute();
-    return $stmt->fetchAll();
-}
-
-function updateReportByAdmin($reportType, $reportId, $data)
-{
-    $db = getDBConnection();
-    $reportType = strtolower($reportType);
-    if ($reportType !== 'lost' && $reportType !== 'found') {
-        return false;
-    }
-
-    $table = $reportType === 'lost' ? 'lost_items' : 'found_items';
-    $locationColumn = $reportType === 'lost' ? 'last_seen_location' : 'pickup_location';
-
-    $stmt = $db->prepare("UPDATE {$table} SET item_name = :item_name, category = :category, description = :description, {$locationColumn} = :location, moderation_status = :moderation_status, moderated_at = NOW() WHERE id = :id");
-    return $stmt->execute([
-        'item_name' => $data['item_name'],
-        'category' => $data['category'],
-        'description' => $data['description'],
-        'location' => $data['location'],
-        'moderation_status' => $data['moderation_status'],
-        'id' => $reportId,
-    ]);
-}
-
-function setReportModerationStatus($reportType, $reportId, $status)
-{
-    $db = getDBConnection();
-    $reportType = strtolower($reportType);
-    if ($reportType !== 'lost' && $reportType !== 'found') {
-        return false;
-    }
-
-    $allowedStatuses = ['Approved', 'Archived'];
-    if (!in_array($status, $allowedStatuses, true)) {
-        return false;
-    }
-
-    $table = $reportType === 'lost' ? 'lost_items' : 'found_items';
-    $stmt = $db->prepare("UPDATE {$table} SET moderation_status = :moderation_status, moderated_at = NOW() WHERE id = :id");
-    return $stmt->execute([
-        'moderation_status' => $status,
-        'id' => $reportId,
-    ]);
-}
-
 function getAdminDashboardStats()
 {
     $db = getDBConnection();
+
+    $lostCount = (int)$db->query("SELECT COUNT(*) FROM lost_items WHERE status = 'Lost'")->fetchColumn();
+    $foundCount = (int)$db->query("SELECT COUNT(*) FROM found_items WHERE status = 'Found'")->fetchColumn();
+    $claimedCount = (int)$db->query("SELECT COUNT(DISTINCT found_item_id) FROM claims")->fetchColumn();
+    $returnedCount = (int)$db->query("SELECT (
+        SELECT COUNT(*) FROM lost_items WHERE status = 'Returned'
+    ) + (
+        SELECT COUNT(*) FROM found_items WHERE status = 'Returned'
+    )")->fetchColumn();
+    $pendingClaims = (int)$db->query("SELECT COUNT(*) FROM claims WHERE status = 'Pending'")->fetchColumn();
+
     return [
-        'lost' => (int)$db->query("SELECT COUNT(*) FROM lost_items WHERE moderation_status <> 'Archived'")->fetchColumn(),
-        'found' => (int)$db->query("SELECT COUNT(*) FROM found_items WHERE moderation_status <> 'Archived'")->fetchColumn(),
-        'claimed' => (int)$db->query("SELECT COUNT(DISTINCT found_item_id) FROM claims")->fetchColumn(),
-        'returned' => (int)$db->query("SELECT COUNT(*) FROM lost_items WHERE status = 'Returned' OR moderation_status = 'Archived'")->fetchColumn(),
-        'pending_claims' => (int)$db->query("SELECT COUNT(*) FROM claims WHERE status = 'Pending'")->fetchColumn(),
+        'lost' => $lostCount,
+        'found' => $foundCount,
+        'claimed' => $claimedCount,
+        'returned' => $returnedCount,
+        'pending_claims' => $pendingClaims,
     ];
 }
 
 function getRecentAdminActivity($limit = 10)
 {
     $db = getDBConnection();
-    $stmt = $db->prepare("SELECT al.*, u.name AS admin_name FROM admin_audit_logs al JOIN users u ON al.admin_user_id = u.id ORDER BY al.created_at DESC LIMIT :limit");
+    $sql = "
+        SELECT * FROM (
+            SELECT
+                'lost' AS activity_kind,
+                li.id AS entity_id,
+                li.item_name AS title,
+                li.status AS item_status,
+                li.created_at AS activity_time,
+                u.name AS actor_name,
+                CONCAT('Lost item reported at ', li.last_seen_location) AS details,
+                'item-detail.php?id=' AS base_link,
+                'lost' AS item_type
+            FROM lost_items li
+            JOIN users u ON li.user_id = u.id
+
+            UNION ALL
+
+            SELECT
+                'found' AS activity_kind,
+                fi.id AS entity_id,
+                fi.item_name AS title,
+                fi.status AS item_status,
+                fi.created_at AS activity_time,
+                u.name AS actor_name,
+                CONCAT('Found item reported at ', fi.pickup_location) AS details,
+                'item-detail.php?id=' AS base_link,
+                'found' AS item_type
+            FROM found_items fi
+            JOIN users u ON fi.user_id = u.id
+
+            UNION ALL
+
+            SELECT
+                'claim' AS activity_kind,
+                fi.id AS entity_id,
+                fi.item_name AS title,
+                c.status AS item_status,
+                c.updated_at AS activity_time,
+                cu.name AS actor_name,
+                CONCAT('Claim ', LOWER(c.status), ' by ', cu.name) AS details,
+                'item-detail.php?id=' AS base_link,
+                'found' AS item_type
+            FROM claims c
+            JOIN found_items fi ON c.found_item_id = fi.id
+            JOIN users cu ON c.claimant_user_id = cu.id
+        ) AS activity
+        ORDER BY activity_time DESC
+        LIMIT :limit";
+
+    $stmt = $db->prepare($sql);
     $stmt->bindValue(':limit', (int)$limit, PDO::PARAM_INT);
     $stmt->execute();
-    return $stmt->fetchAll();
+
+    $rows = [];
+    foreach ($stmt->fetchAll() as $row) {
+        $link = $row['base_link'] . $row['entity_id'] . '&type=' . $row['item_type'];
+        $kind = $row['activity_kind'];
+        $status = strtolower((string)$row['item_status']);
+
+        $rows[] = [
+            'kind' => $kind,
+            'title' => $row['title'],
+            'status' => $row['item_status'],
+            'actor_name' => $row['actor_name'],
+            'details' => $row['details'],
+            'activity_time' => date('c', strtotime($row['activity_time'])),
+            'link' => $link,
+            'badge_class' => $status,
+        ];
+    }
+
+    return $rows;
 }
 

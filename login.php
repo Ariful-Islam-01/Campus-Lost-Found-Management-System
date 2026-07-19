@@ -5,9 +5,13 @@ session_start();
 // Include database connection helper
 require_once __DIR__ . '/db.php';
 
-// Redirect to the correct dashboard if already logged in
+// Redirect to the appropriate dashboard if already logged in
 if (isset($_SESSION['user_id'])) {
-  header('Location: ' . ((isset($_SESSION['user_role']) && $_SESSION['user_role'] === 'admin') ? 'admin-dashboard.php' : 'dashboard.php'));
+  if (isset($_SESSION['user_role']) && $_SESSION['user_role'] === 'admin') {
+    header('Location: admin-dashboard.php');
+  } else {
+    header('Location: dashboard.php');
+  }
     exit;
 }
 
