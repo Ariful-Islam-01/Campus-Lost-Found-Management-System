@@ -35,6 +35,9 @@ function initDatabase()
         id INT AUTO_INCREMENT PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
         email VARCHAR(255) UNIQUE NOT NULL,
+        role VARCHAR(20) NOT NULL DEFAULT 'user',
+        phone VARCHAR(20) NULL,
+        profile_photo VARCHAR(255) NULL,
         password_hash VARCHAR(255) NOT NULL,
         verification_code VARCHAR(255),
         is_verified TINYINT DEFAULT 0,
@@ -43,10 +46,15 @@ function initDatabase()
 
     $db->exec($sql);
 
+    $checkRole = $db->query("SHOW COLUMNS FROM users LIKE 'role'")->fetch();
+    if (!$checkRole) {
+        $db->exec("ALTER TABLE users ADD COLUMN role VARCHAR(20) NOT NULL DEFAULT 'user' AFTER email");
+    }
+
     // Dynamically check and add phone column if not exists
     $checkPhone = $db->query("SHOW COLUMNS FROM users LIKE 'phone'")->fetch();
     if (!$checkPhone) {
-        $db->exec("ALTER TABLE users ADD COLUMN phone VARCHAR(20) NULL AFTER email");
+        $db->exec("ALTER TABLE users ADD COLUMN phone VARCHAR(20) NULL AFTER role");
     }
 
     // Dynamically check and add profile_photo column if not exists
@@ -99,6 +107,21 @@ function initDatabase()
         FOREIGN KEY (claimant_user_id) REFERENCES users(id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
     $db->exec($sqlClaims);
+
+    $adminEmail = 'admin@campus.local';
+    $adminPassword = 'Admin@1234';
+    $adminUser = getUserByEmail($adminEmail);
+    if (!$adminUser) {
+        $stmt = $db->prepare("INSERT INTO users (name, email, role, password_hash, is_verified) VALUES (:name, :email, 'admin', :password_hash, 1)");
+        $stmt->execute([
+            'name' => 'Campus Admin',
+            'email' => $adminEmail,
+            'password_hash' => password_hash($adminPassword, PASSWORD_DEFAULT)
+        ]);
+    } elseif (($adminUser['role'] ?? 'user') !== 'admin') {
+        $stmt = $db->prepare("UPDATE users SET role = 'admin', is_verified = 1 WHERE id = :id");
+        $stmt->execute(['id' => $adminUser['id']]);
+    }
 }
 
 // Auto-initialize the tables
@@ -480,5 +503,105 @@ function getClaimsByUser($userId)
     $stmt = $db->prepare("SELECT c.*, fi.item_name, fi.photo_path, fi.status FROM claims c JOIN found_items fi ON c.found_item_id = fi.id WHERE c.claimant_user_id = :user_id ORDER BY c.created_at DESC");
     $stmt->execute(['user_id' => $userId]);
     return $stmt->fetchAll();
+}
+
+function getAdminDashboardStats()
+{
+    $db = getDBConnection();
+
+    $lostCount = (int)$db->query("SELECT COUNT(*) FROM lost_items WHERE status = 'Lost'")->fetchColumn();
+    $foundCount = (int)$db->query("SELECT COUNT(*) FROM found_items WHERE status = 'Found'")->fetchColumn();
+    $claimedCount = (int)$db->query("SELECT COUNT(DISTINCT found_item_id) FROM claims")->fetchColumn();
+    $returnedCount = (int)$db->query("SELECT (
+        SELECT COUNT(*) FROM lost_items WHERE status = 'Returned'
+    ) + (
+        SELECT COUNT(*) FROM found_items WHERE status = 'Returned'
+    )")->fetchColumn();
+    $pendingClaims = (int)$db->query("SELECT COUNT(*) FROM claims WHERE status = 'Pending'")->fetchColumn();
+
+    return [
+        'lost' => $lostCount,
+        'found' => $foundCount,
+        'claimed' => $claimedCount,
+        'returned' => $returnedCount,
+        'pending_claims' => $pendingClaims,
+    ];
+}
+
+function getRecentAdminActivity($limit = 10)
+{
+    $db = getDBConnection();
+    $sql = "
+        SELECT * FROM (
+            SELECT
+                'lost' AS activity_kind,
+                li.id AS entity_id,
+                li.item_name AS title,
+                li.status AS item_status,
+                li.created_at AS activity_time,
+                u.name AS actor_name,
+                CONCAT('Lost item reported at ', li.last_seen_location) AS details,
+                'item-detail.php?id=' AS base_link,
+                'lost' AS item_type
+            FROM lost_items li
+            JOIN users u ON li.user_id = u.id
+
+            UNION ALL
+
+            SELECT
+                'found' AS activity_kind,
+                fi.id AS entity_id,
+                fi.item_name AS title,
+                fi.status AS item_status,
+                fi.created_at AS activity_time,
+                u.name AS actor_name,
+                CONCAT('Found item reported at ', fi.pickup_location) AS details,
+                'item-detail.php?id=' AS base_link,
+                'found' AS item_type
+            FROM found_items fi
+            JOIN users u ON fi.user_id = u.id
+
+            UNION ALL
+
+            SELECT
+                'claim' AS activity_kind,
+                fi.id AS entity_id,
+                fi.item_name AS title,
+                c.status AS item_status,
+                c.updated_at AS activity_time,
+                cu.name AS actor_name,
+                CONCAT('Claim ', LOWER(c.status), ' by ', cu.name) AS details,
+                'item-detail.php?id=' AS base_link,
+                'found' AS item_type
+            FROM claims c
+            JOIN found_items fi ON c.found_item_id = fi.id
+            JOIN users cu ON c.claimant_user_id = cu.id
+        ) AS activity
+        ORDER BY activity_time DESC
+        LIMIT :limit";
+
+    $stmt = $db->prepare($sql);
+    $stmt->bindValue(':limit', (int)$limit, PDO::PARAM_INT);
+    $stmt->execute();
+
+    $rows = [];
+    foreach ($stmt->fetchAll() as $row) {
+        $link = $row['base_link'] . $row['entity_id'] . '&type=' . $row['item_type'];
+        $kind = $row['activity_kind'];
+        $status = strtolower((string)$row['item_status']);
+
+        $rows[] = [
+            'kind' => $kind,
+            'title' => $row['title'],
+            'status' => $row['item_status'],
+            'actor_name' => $row['actor_name'],
+            'details' => $row['details'],
+            'activity_time' => date('c', strtotime($row['activity_time'])),
+            'link' => $link,
+            'badge_class' => $status,
+        ];
+    }
+
+    return $rows;
 }
 

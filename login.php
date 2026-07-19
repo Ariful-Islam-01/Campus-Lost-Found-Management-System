@@ -5,9 +5,13 @@ session_start();
 // Include database connection helper
 require_once __DIR__ . '/db.php';
 
-// Redirect to dashboard if already logged in
+// Redirect to the appropriate dashboard if already logged in
 if (isset($_SESSION['user_id'])) {
+  if (isset($_SESSION['user_role']) && $_SESSION['user_role'] === 'admin') {
+    header('Location: admin-dashboard.php');
+  } else {
     header('Location: dashboard.php');
+  }
     exit;
 }
 
@@ -82,12 +86,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['user_name'] = $user['name'];
         $_SESSION['user_email'] = $user['email'];
+        $_SESSION['user_role'] = $user['role'] ?? 'user';
+
+        $redirect = ($_SESSION['user_role'] === 'admin') ? 'admin-dashboard.php' : 'dashboard.php';
         
         // Return Success Response
         echo json_encode([
             'status' => 'success',
             'message' => 'Login successful! Redirecting...',
-            'redirect' => 'dashboard.php'
+          'redirect' => $redirect
         ]);
         exit;
         
