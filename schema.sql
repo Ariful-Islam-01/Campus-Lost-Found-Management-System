@@ -11,8 +11,9 @@ CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
-    phone VARCHAR(20) NULL AFTER email,
-    profile_photo VARCHAR(255) NULL AFTER phone,
+    role VARCHAR(20) NOT NULL DEFAULT 'user',
+    phone VARCHAR(20) NULL,
+    profile_photo VARCHAR(255) NULL,
     password_hash VARCHAR(255) NOT NULL,
     verification_code VARCHAR(255),
     is_verified TINYINT DEFAULT 0,
@@ -31,6 +32,8 @@ CREATE TABLE IF NOT EXISTS lost_items (
     date_lost DATE NOT NULL,
     photo_path VARCHAR(255) NULL,
     status VARCHAR(50) NOT NULL DEFAULT 'Lost',
+    moderation_status VARCHAR(20) NOT NULL DEFAULT 'Approved',
+    moderated_at TIMESTAMP NULL DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -46,6 +49,8 @@ CREATE TABLE IF NOT EXISTS found_items (
     pickup_location VARCHAR(255) NOT NULL,
     photo_path VARCHAR(255) NOT NULL,
     status VARCHAR(50) NOT NULL DEFAULT 'Found',
+    moderation_status VARCHAR(20) NOT NULL DEFAULT 'Approved',
+    moderated_at TIMESTAMP NULL DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -62,4 +67,20 @@ CREATE TABLE IF NOT EXISTS claims (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (found_item_id) REFERENCES found_items(id) ON DELETE CASCADE,
     FOREIGN KEY (claimant_user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 5. Admin Audit Log Table
+-- Tracks every moderation and admin edit action for accountability
+CREATE TABLE IF NOT EXISTS admin_audit_logs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    admin_user_id INT NOT NULL,
+    action_type VARCHAR(50) NOT NULL,
+    entity_type VARCHAR(50) NOT NULL,
+    entity_id INT NOT NULL,
+    action_details TEXT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (admin_user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_audit_admin_user_id (admin_user_id),
+    INDEX idx_audit_entity (entity_type, entity_id),
+    INDEX idx_audit_created_at (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
