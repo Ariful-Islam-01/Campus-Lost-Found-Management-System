@@ -367,6 +367,15 @@ header {
   box-shadow: var(--shadow-input-focus);
 }
 
+/* Input placeholder styles */
+.form-input::placeholder {
+  color: var(--clr-gray-400);
+  opacity: 1;
+}
+.form-input:focus::placeholder {
+  color: var(--clr-gray-500);
+}
+
 /* Textarea & Select styles */
 .form-textarea {
   min-height: 110px;

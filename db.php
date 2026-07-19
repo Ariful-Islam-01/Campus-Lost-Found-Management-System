@@ -85,6 +85,20 @@ function initDatabase()
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
     $db->exec($sqlFound);
+
+    // Create claims table if not exists
+    $sqlClaims = "CREATE TABLE IF NOT EXISTS claims (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        found_item_id INT NOT NULL,
+        claimant_user_id INT NOT NULL,
+        proof_of_ownership TEXT NOT NULL,
+        status VARCHAR(50) NOT NULL DEFAULT 'Pending',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (found_item_id) REFERENCES found_items(id) ON DELETE CASCADE,
+        FOREIGN KEY (claimant_user_id) REFERENCES users(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+    $db->exec($sqlClaims);
 }
 
 // Auto-initialize the tables
@@ -104,6 +118,27 @@ function getUserById($userId)
     $stmt = $db->prepare("SELECT * FROM users WHERE id = :id");
     $stmt->execute(['id' => $userId]);
     return $stmt->fetch();
+}
+
+function getUniqueLocations()
+{
+    $db = getDBConnection();
+    $stmt = $db->query(
+        "SELECT location FROM (
+            SELECT last_seen_location AS location FROM lost_items
+            UNION
+            SELECT pickup_location AS location FROM found_items
+        ) AS combined
+        WHERE TRIM(location) <> ''
+        ORDER BY location ASC"
+    );
+
+    $locations = [];
+    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        $locations[] = $row['location'];
+    }
+
+    return $locations;
 }
 
 function updateUserProfile($userId, $name, $phone, $photoPath)
@@ -387,5 +422,63 @@ function getTotalItemsCount($type, $category, $search) {
     
     $stmt->execute();
     return (int)$stmt->fetchColumn();
+}
+
+function getLostItemById($itemId)
+{
+    $db = getDBConnection();
+    $stmt = $db->prepare("SELECT li.*, u.name as reporter_name, u.email as reporter_email, u.phone as reporter_phone FROM lost_items li JOIN users u ON li.user_id = u.id WHERE li.id = :id");
+    $stmt->execute(['id' => $itemId]);
+    return $stmt->fetch();
+}
+
+function getFoundItemById($itemId)
+{
+    $db = getDBConnection();
+    $stmt = $db->prepare("SELECT fi.*, u.name as finder_name, u.email as finder_email, u.phone as finder_phone FROM found_items fi JOIN users u ON fi.user_id = u.id WHERE fi.id = :id");
+    $stmt->execute(['id' => $itemId]);
+    return $stmt->fetch();
+}
+
+function createClaim($foundItemId, $claimantUserId, $proofOfOwnership)
+{
+    $db = getDBConnection();
+    $stmt = $db->prepare("INSERT INTO claims (found_item_id, claimant_user_id, proof_of_ownership, status) VALUES (:found_item_id, :claimant_user_id, :proof_of_ownership, 'Pending')");
+    return $stmt->execute([
+        'found_item_id' => $foundItemId,
+        'claimant_user_id' => $claimantUserId,
+        'proof_of_ownership' => $proofOfOwnership
+    ]);
+}
+
+function getClaimsForItem($foundItemId)
+{
+    $db = getDBConnection();
+    $stmt = $db->prepare("SELECT c.*, u.name as claimant_name, u.email as claimant_email, u.phone as claimant_phone FROM claims c JOIN users u ON c.claimant_user_id = u.id WHERE c.found_item_id = :found_item_id ORDER BY c.created_at DESC");
+    $stmt->execute(['found_item_id' => $foundItemId]);
+    return $stmt->fetchAll();
+}
+
+function getClaimById($claimId)
+{
+    $db = getDBConnection();
+    $stmt = $db->prepare("SELECT c.*, u.name as claimant_name, u.email as claimant_email, u.phone as claimant_phone, fi.item_name, fi.status FROM claims c JOIN users u ON c.claimant_user_id = u.id JOIN found_items fi ON c.found_item_id = fi.id WHERE c.id = :id");
+    $stmt->execute(['id' => $claimId]);
+    return $stmt->fetch();
+}
+
+function updateClaimStatus($claimId, $status)
+{
+    $db = getDBConnection();
+    $stmt = $db->prepare("UPDATE claims SET status = :status WHERE id = :id");
+    return $stmt->execute(['status' => $status, 'id' => $claimId]);
+}
+
+function getClaimsByUser($userId)
+{
+    $db = getDBConnection();
+    $stmt = $db->prepare("SELECT c.*, fi.item_name, fi.photo_path, fi.status FROM claims c JOIN found_items fi ON c.found_item_id = fi.id WHERE c.claimant_user_id = :user_id ORDER BY c.created_at DESC");
+    $stmt->execute(['user_id' => $userId]);
+    return $stmt->fetchAll();
 }
 
