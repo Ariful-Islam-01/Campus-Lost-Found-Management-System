@@ -585,6 +585,33 @@ function buildQueryString($newPage, $currentType, $currentCategory, $currentSear
       color: var(--clr-teal-300);
     }
 
+    .btn-view-details {
+      display: inline-block;
+      padding: 0.65rem 1.25rem;
+      margin-top: 1rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--clr-white);
+      background: linear-gradient(135deg, var(--clr-teal-600) 0%, var(--clr-teal-500) 100%);
+      border: none;
+      border-radius: var(--radius-sm);
+      text-decoration: none;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      box-shadow: 0 4px 12px rgba(13, 148, 136, 0.2);
+    }
+
+    .btn-view-details:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(13, 148, 136, 0.3);
+      filter: brightness(1.1);
+    }
+
+    .btn-view-details:active {
+      transform: translateY(0);
+    }
+
     .no-reports-msg {
       grid-column: 1 / -1;
       text-align: center;
@@ -835,6 +862,11 @@ function buildQueryString($newPage, $currentType, $currentCategory, $currentSear
                   </span>
                 </div>
               </div>
+
+              <!-- View Details Button -->
+              <a href="item-detail.php?id=<?php echo $item['id']; ?>&type=<?php echo strtolower($item['type']); ?>" class="btn-view-details" style="<?php echo ($item['type'] === 'Found') ? 'background: linear-gradient(135deg, #059669 0%, #10b981 100%);' : ''; ?>">
+                View Details
+              </a>
             </div>
           </div>
         <?php endforeach; ?>

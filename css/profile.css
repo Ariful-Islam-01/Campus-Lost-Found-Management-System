@@ -325,6 +325,15 @@ header {
   box-shadow: var(--shadow-input-focus);
 }
 
+/* Input placeholder styles */
+.form-input::placeholder {
+  color: var(--clr-gray-400);
+  opacity: 1;
+}
+.form-input:focus::placeholder {
+  color: var(--clr-gray-500);
+}
+
 /* Photo Upload Field Custom Wrapper */
 .file-upload-wrapper {
   width: 100%;
