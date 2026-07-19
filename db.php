@@ -74,6 +74,8 @@ function initDatabase()
         date_lost DATE NOT NULL,
         photo_path VARCHAR(255) NULL,
         status VARCHAR(50) NOT NULL DEFAULT 'Lost',
+        moderation_status VARCHAR(20) NOT NULL DEFAULT 'Approved',
+        moderated_at TIMESTAMP NULL DEFAULT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
@@ -89,6 +91,8 @@ function initDatabase()
         pickup_location VARCHAR(255) NOT NULL,
         photo_path VARCHAR(255) NOT NULL,
         status VARCHAR(50) NOT NULL DEFAULT 'Found',
+        moderation_status VARCHAR(20) NOT NULL DEFAULT 'Approved',
+        moderated_at TIMESTAMP NULL DEFAULT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
@@ -188,7 +192,7 @@ function updateUserProfile($userId, $name, $phone, $photoPath)
 function createLostItem($userId, $itemName, $category, $description, $lastSeenLocation, $dateLost, $photoPath)
 {
     $db = getDBConnection();
-    $stmt = $db->prepare("INSERT INTO lost_items (user_id, item_name, category, description, last_seen_location, date_lost, photo_path, status) VALUES (:user_id, :item_name, :category, :description, :last_seen_location, :date_lost, :photo_path, 'Lost')");
+    $stmt = $db->prepare("INSERT INTO lost_items (user_id, item_name, category, description, last_seen_location, date_lost, photo_path, status, moderation_status) VALUES (:user_id, :item_name, :category, :description, :last_seen_location, :date_lost, :photo_path, 'Lost', 'Approved')");
     return $stmt->execute([
         'user_id' => $userId,
         'item_name' => $itemName,
@@ -248,6 +252,8 @@ function getLostItems($filters = []) {
                 break;
         }
     }
+
+    $where[] = "li.moderation_status <> 'Archived'";
     
     if (!empty($where)) {
         $sql .= " WHERE " . implode(" AND ", $where);
@@ -263,7 +269,7 @@ function getLostItems($filters = []) {
 function createFoundItem($userId, $itemName, $category, $description, $pickupLocation, $photoPath)
 {
     $db = getDBConnection();
-    $stmt = $db->prepare("INSERT INTO found_items (user_id, item_name, category, description, pickup_location, photo_path, status) VALUES (:user_id, :item_name, :category, :description, :pickup_location, :photo_path, 'Found')");
+    $stmt = $db->prepare("INSERT INTO found_items (user_id, item_name, category, description, pickup_location, photo_path, status, moderation_status) VALUES (:user_id, :item_name, :category, :description, :pickup_location, :photo_path, 'Found', 'Approved')");
     return $stmt->execute([
         'user_id' => $userId,
         'item_name' => $itemName,
@@ -319,6 +325,8 @@ function getFoundItems($filters = []) {
                 break;
         }
     }
+
+    $where[] = "fi.moderation_status <> 'Archived'";
     
     if (!empty($where)) {
         $sql .= " WHERE " . implode(" AND ", $where);
