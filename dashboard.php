@@ -37,6 +37,15 @@ if ($filters['date_range'] !== '' && !in_array($filters['date_range'], $allowedD
 $lostItems = getLostItems($filters);
 $foundItems = getFoundItems($filters);
 $filtersActive = !empty($filters['search']) || !empty($filters['category']) || !empty($filters['location']) || !empty($filters['date_range']);
+$myClaims = getClaimsByUser($userId);
+$claimStats = ['total' => 0, 'pending' => 0, 'approved' => 0, 'rejected' => 0];
+foreach ($myClaims as $claim) {
+  $claimStats['total']++;
+  $claimKey = strtolower($claim['status'] ?? 'pending');
+  if (isset($claimStats[$claimKey])) {
+    $claimStats[$claimKey]++;
+  }
+}
 
 // Setup filters array from GET query parameters
 $filters = [
@@ -856,6 +865,261 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
       transform: translateX(3px);
     }
 
+    /* My Claims Section */
+    .claims-section {
+      margin: 3rem 0 1rem;
+      padding: 1.35rem;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.015));
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-lg);
+      backdrop-filter: blur(12px);
+    }
+
+    .claims-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+      padding-bottom: 0.85rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .claims-title-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .claims-title {
+      font-size: 1.5rem;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      background: linear-gradient(135deg, #fff 50%, var(--clr-amber-400));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .claims-subtitle {
+      color: var(--clr-gray-400);
+      font-size: 0.92rem;
+      line-height: 1.5;
+    }
+
+    .claims-summary {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.65rem;
+      margin-bottom: 1.15rem;
+    }
+
+    .claims-summary-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.45rem 0.8rem;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: var(--clr-gray-200);
+      font-size: 0.82rem;
+      font-weight: 600;
+    }
+
+    .claims-summary-chip strong {
+      color: var(--clr-white);
+      font-weight: 800;
+    }
+
+    .claims-summary-chip.total {
+      background: rgba(13, 148, 136, 0.12);
+      border-color: rgba(13, 148, 136, 0.24);
+      color: var(--clr-teal-300);
+    }
+
+    .claims-summary-chip.pending {
+      background: rgba(251, 191, 36, 0.12);
+      border-color: rgba(251, 191, 36, 0.22);
+      color: #fbbf24;
+    }
+
+    .claims-summary-chip.approved {
+      background: rgba(16, 185, 129, 0.12);
+      border-color: rgba(16, 185, 129, 0.22);
+      color: #34d399;
+    }
+
+    .claims-summary-chip.rejected {
+      background: rgba(239, 68, 68, 0.12);
+      border-color: rgba(239, 68, 68, 0.22);
+      color: #f87171;
+    }
+
+    .claims-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1rem;
+    }
+
+    .claim-card {
+      position: relative;
+      overflow: hidden;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: var(--radius-md);
+      padding: 1.15rem;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+      transition: all 0.25s ease;
+    }
+
+    .claim-card::before {
+      content: '';
+      position: absolute;
+      inset: 0 auto auto 0;
+      width: 100%;
+      height: 3px;
+      background: linear-gradient(90deg, var(--clr-teal-500), var(--clr-amber-400));
+      opacity: 0.9;
+    }
+
+    .claim-card:hover {
+      transform: translateY(-3px);
+      border-color: var(--clr-teal-500);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .claim-card-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      align-items: flex-start;
+      margin-bottom: 1rem;
+    }
+
+    .claim-item-name {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--clr-white);
+      margin-bottom: 0.3rem;
+      line-height: 1.2;
+    }
+
+    .claim-meta {
+      color: var(--clr-gray-400);
+      font-size: 0.82rem;
+      line-height: 1.5;
+    }
+
+    .claim-context {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.45rem;
+      margin-bottom: 0.95rem;
+      color: var(--clr-gray-300);
+      font-size: 0.8rem;
+    }
+
+    .claim-context span {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.3rem 0.55rem;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 999px;
+    }
+
+    .claim-status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.35rem 0.7rem;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      white-space: nowrap;
+    }
+
+    .claim-status-badge::before {
+      content: '';
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: currentColor;
+      flex-shrink: 0;
+    }
+
+    .claim-status-pending {
+      background: rgba(251, 191, 36, 0.12);
+      color: #fbbf24;
+      border: 1px solid rgba(251, 191, 36, 0.25);
+    }
+
+    .claim-status-approved {
+      background: rgba(16, 185, 129, 0.12);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.25);
+    }
+
+    .claim-status-rejected {
+      background: rgba(239, 68, 68, 0.12);
+      color: #f87171;
+      border: 1px solid rgba(239, 68, 68, 0.25);
+    }
+
+    .claim-proof-box {
+      margin-top: 1rem;
+      padding: 0.95rem;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
+      color: var(--clr-gray-300);
+      font-size: 0.88rem;
+      line-height: 1.55;
+      white-space: pre-wrap;
+      max-height: 5.25rem;
+      overflow: hidden;
+    }
+
+    .claim-footer {
+      margin-top: 1rem;
+      padding-top: 0.9rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+      color: var(--clr-gray-500);
+      font-size: 0.78rem;
+    }
+
+    .claim-link {
+      color: var(--clr-teal-300);
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .claim-link:hover {
+      color: var(--clr-amber-400);
+    }
+
+    .no-claims-msg {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 2rem;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px dashed rgba(255, 255, 255, 0.08);
+      border-radius: var(--radius-md);
+      color: var(--clr-gray-500);
+      font-size: 0.92rem;
+    }
+
     @media (max-width: 1024px) {
       .filter-form-grid {
         grid-template-columns: 1fr 1fr;
@@ -991,8 +1255,84 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
           <h3 class="action-title">Browse Listings</h3>
           <p class="action-desc">View all lost and found reports. Search, filter by category, and browse items using page navigation.</p>
         </a>
+
+        <a href="#myClaimsTitle" class="action-card">
+          <div class="action-icon icon-found" style="background: rgba(245, 158, 11, 0.15); color: var(--clr-amber-400);">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+            </svg>
+          </div>
+          <h3 class="action-title">My Claims</h3>
+          <p class="action-desc">Check the latest status of each claim you have submitted for found items.</p>
+        </a>
       </div>
     </div>
+
+    <!-- My Claims Section -->
+    <section class="claims-section" aria-labelledby="myClaimsTitle">
+      <div class="claims-header">
+        <div class="claims-title-wrap">
+          <h2 class="claims-title" id="myClaimsTitle">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+            </svg>
+            My Claims
+          </h2>
+          <p class="claims-subtitle">Track every claim you submitted and see its current status at a glance.</p>
+        </div>
+        <a href="#myClaimsTitle" class="btn-filter-action" style="text-decoration:none;">Jump to Claims</a>
+      </div>
+
+      <div class="claims-summary" aria-label="Claim summary">
+        <span class="claims-summary-chip total">Total <strong><?php echo (int)$claimStats['total']; ?></strong></span>
+        <span class="claims-summary-chip pending">Pending <strong><?php echo (int)$claimStats['pending']; ?></strong></span>
+        <span class="claims-summary-chip approved">Approved <strong><?php echo (int)$claimStats['approved']; ?></strong></span>
+        <span class="claims-summary-chip rejected">Rejected <strong><?php echo (int)$claimStats['rejected']; ?></strong></span>
+      </div>
+
+      <div class="claims-grid">
+        <?php if (!empty($myClaims)): ?>
+          <?php foreach ($myClaims as $claim): ?>
+            <?php
+            $statusLower = strtolower($claim['status']);
+            $statusLabel = ucfirst($statusLower);
+            ?>
+            <article class="claim-card">
+              <div class="claim-card-top">
+                <div>
+                  <h3 class="claim-item-name"><?php echo htmlspecialchars($claim['item_name']); ?></h3>
+                  <p class="claim-meta">
+                    Submitted <?php echo htmlspecialchars(date('M d, Y', strtotime($claim['created_at']))); ?>
+                  </p>
+                </div>
+                <span class="claim-status-badge claim-status-<?php echo htmlspecialchars($statusLower); ?>">
+                  <?php echo htmlspecialchars($statusLabel); ?>
+                </span>
+              </div>
+
+              <div class="claim-context">
+                <span>Item: <?php echo htmlspecialchars($claim['item_name']); ?></span>
+                <span>Ref #<?php echo (int)$claim['found_item_id']; ?></span>
+              </div>
+
+              <div class="claim-proof-box"><?php echo nl2br(htmlspecialchars($claim['proof_of_ownership'])); ?></div>
+
+              <div class="claim-footer">
+                <span>Claim ID: #<?php echo (int)$claim['id']; ?></span>
+                <a class="claim-link" href="item-detail.php?id=<?php echo (int)$claim['found_item_id']; ?>&type=found">View item</a>
+              </div>
+            </article>
+          <?php endforeach; ?>
+        <?php else: ?>
+          <div class="no-claims-msg">
+            You have not submitted any claims yet. Use the Claim Item button on a found item to start one.
+          </div>
+        <?php endif; ?>
+      </div>
+    </section>
 
     <!-- Search Bar & Filter Controls -->
     <div class="search-filter-container">
