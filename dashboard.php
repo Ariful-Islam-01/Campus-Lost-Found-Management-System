@@ -58,6 +58,9 @@ foreach ($myClaims as $claim) {
   }
 }
 
+$notifications = getUserNotifications($userId, 5);
+$unreadNotificationCount = getUnreadNotificationCount($userId);
+
 // Setup filters array from GET query parameters
 $filters = [
   'search' => isset($_GET['search']) ? trim($_GET['search']) : '',
@@ -1294,6 +1297,34 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
         <?php endif; ?>
       </div>
     </div>
+
+    <section class="notifications-section" aria-labelledby="notificationsTitle">
+      <div class="section-heading">
+        <div>
+          <h2 id="notificationsTitle">Notifications</h2>
+          <p class="section-subtitle">Latest claimant updates and system alerts.</p>
+        </div>
+        <div class="notification-pill">Unread: <strong><?php echo (int)$unreadNotificationCount; ?></strong></div>
+      </div>
+      <div class="notifications-grid">
+        <?php if (!empty($notifications)): ?>
+          <?php foreach ($notifications as $notification): ?>
+            <article class="notification-card <?php echo $notification['is_read'] ? 'read' : 'unread'; ?>">
+              <h3><?php echo htmlspecialchars($notification['title']); ?></h3>
+              <p><?php echo nl2br(htmlspecialchars($notification['message'])); ?></p>
+              <div class="notification-meta">
+                <span><?php echo htmlspecialchars(date('M d, Y h:i A', strtotime($notification['created_at']))); ?></span>
+                <?php if (!empty($notification['link'])): ?>
+                  <a href="<?php echo htmlspecialchars($notification['link']); ?>">View</a>
+                <?php endif; ?>
+              </div>
+            </article>
+          <?php endforeach; ?>
+        <?php else: ?>
+          <div class="notification-empty">No notifications yet.</div>
+        <?php endif; ?>
+      </div>
+    </section>
 
     <!-- My Claims Section -->
     <section class="claims-section" aria-labelledby="myClaimsTitle">

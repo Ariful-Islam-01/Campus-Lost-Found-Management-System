@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash VARCHAR(255) NOT NULL,
     verification_code VARCHAR(255),
     is_verified TINYINT DEFAULT 0,
+    status VARCHAR(20) NOT NULL DEFAULT 'Active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -63,13 +64,31 @@ CREATE TABLE IF NOT EXISTS claims (
     claimant_user_id INT NOT NULL,
     proof_of_ownership TEXT NOT NULL,
     status VARCHAR(50) NOT NULL DEFAULT 'Pending',
+    admin_id INT NULL,
+    decision_reason TEXT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (found_item_id) REFERENCES found_items(id) ON DELETE CASCADE,
-    FOREIGN KEY (claimant_user_id) REFERENCES users(id) ON DELETE CASCADE
+    FOREIGN KEY (claimant_user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (admin_id) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 5. Admin Audit Log Table
+-- 5. Notifications Table
+-- Stores user-facing notifications for in-app alerts
+CREATE TABLE IF NOT EXISTS notifications (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    link VARCHAR(255) NULL,
+    is_read TINYINT(1) NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_notifications_user_id (user_id),
+    INDEX idx_notifications_is_read (is_read)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 6. Admin Audit Log Table
 -- Tracks every moderation and admin edit action for accountability
 CREATE TABLE IF NOT EXISTS admin_audit_logs (
     id INT AUTO_INCREMENT PRIMARY KEY,

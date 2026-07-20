@@ -12,6 +12,7 @@
   const passwordInput = document.getElementById('password');
   const submitBtn     = document.getElementById('submitBtn');
   const btnLoader     = document.getElementById('btnLoader');
+  const formAlert     = document.getElementById('formAlert');
 
   /* ── Validation State ── */
   const state = { email: false, password: false };
@@ -49,6 +50,19 @@
     group.classList.remove('valid', 'error');
     if (icon) icon.classList.remove('ok', 'bad', 'show');
     if (msg)  { msg.textContent = ''; msg.className = 'field-message'; }
+  }
+
+  function showFormAlert(message, type = 'danger') {
+    if (!formAlert) return;
+    formAlert.textContent = message;
+    formAlert.className = `alert alert-${type}`;
+    formAlert.classList.remove('d-none');
+  }
+
+  function hideFormAlert() {
+    if (!formAlert) return;
+    formAlert.textContent = '';
+    formAlert.classList.add('d-none');
   }
 
   /* ── Email Validation ── */
@@ -123,6 +137,7 @@
       return;
     }
 
+    hideFormAlert();
     submitBtn.classList.add('loading');
     submitBtn.disabled = true;
 
@@ -168,6 +183,8 @@
             setFieldState('fieldGroupEmail', 'statusIconEmail', false, errs.emailAddress);
           } else if (field === 'password') {
             setFieldState('fieldGroupPassword', 'statusIconPassword', false, errs.password);
+          } else if (field === 'account') {
+            showFormAlert(errs.account, 'danger');
           }
         });
         
@@ -175,7 +192,7 @@
         if (firstError) firstError.focus();
       } else {
         const msg = error.data && error.data.message ? error.data.message : 'An unexpected server error occurred. Please try again.';
-        alert(msg);
+        showFormAlert(msg, 'danger');
       }
     });
   });

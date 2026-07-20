@@ -81,6 +81,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ]);
             exit;
         }
+
+        // Block login for deactivated accounts.
+        if (isset($user['status']) && strtolower($user['status']) === 'inactive') {
+            http_response_code(403);
+            echo json_encode([
+                'status' => 'validation_error',
+                'errors' => [
+                    'account' => 'Your account has been deactivated. Please contact the administrator.'
+                ]
+            ]);
+            exit;
+        }
         
         // Start User Session
         $_SESSION['user_id'] = $user['id'];
@@ -120,6 +132,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-4r3x4m4h+2wO1G75kmOe9w+8Xwwk6oFVi+6Fv7eJmYB4jzBXGww9j5gIMB8DQG7B" crossorigin="anonymous">
   
   <!-- Stylesheets -->
   <link rel="stylesheet" href="css/login.css">
@@ -194,6 +207,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           <p class="form-subtitle">Enter your credentials to access your account.</p>
         </div>
 
+        <div id="formAlert" class="alert alert-danger d-none" role="alert"></div>
+
         <form id="loginForm" class="login-form" novalidate aria-label="Account login form">
 
           <!-- Email Address Input -->
@@ -258,5 +273,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
   <!-- Validation Javascript -->
   <script src="js/login.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-U1h5x0G3Sj2+hN6tDf1DE4BFeN4eQcA/pv3eCG7Q6u0xH7p81Md7UkrhQZHzueU6" crossorigin="anonymous"></script>
 </body>
 </html>

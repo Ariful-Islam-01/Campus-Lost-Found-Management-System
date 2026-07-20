@@ -2,6 +2,25 @@
 // admin-reports.php
 session_start();
 
+if (isset($_GET['action']) && $_GET['action'] === 'logout') {
+    $_SESSION = [];
+    if (ini_get('session.use_cookies')) {
+        $params = session_get_cookie_params();
+        setcookie(
+            session_name(),
+            '',
+            time() - 42000,
+            $params['path'],
+            $params['domain'],
+            $params['secure'],
+            $params['httponly']
+        );
+    }
+    session_destroy();
+    header('Location: login.php');
+    exit;
+}
+
 if (!isset($_SESSION['user_id'])) {
     header('Location: login.php');
     exit;
@@ -15,7 +34,7 @@ if (!$user) {
     exit;
 }
 
-if (!isAdminUser($user)) {
+if (empty($user['role']) || strtolower($user['role']) !== 'admin') {
     header('Location: dashboard.php');
     exit;
 }
@@ -72,7 +91,7 @@ $pendingCount = (int)count(array_filter($reports, function ($report) { return ($
     *{box-sizing:border-box} body{margin:0;font-family:'Inter',system-ui,sans-serif;background:linear-gradient(180deg,#101827 0%,#0c1420 100%);color:var(--w)}
     header{position:sticky;top:0;z-index:10;display:flex;justify-content:space-between;align-items:center;gap:1rem;padding:1rem 1.3rem;background:rgba(8,15,28,.8);backdrop-filter:blur(14px);border-bottom:1px solid rgba(255,255,255,.08)}
     .title{display:flex;align-items:center;gap:.8rem}.title h1{margin:0;font-size:1.2rem}.title p{margin:.15rem 0 0;color:var(--g4);font-size:.8rem}
-    .btn{display:inline-flex;align-items:center;gap:.4rem;padding:.6rem .85rem;border-radius:999px;text-decoration:none;font-size:.82rem;font-weight:700;white-space:nowrap}.btn.primary{background:linear-gradient(135deg,var(--c2),var(--c3));color:var(--w)}.btn.ghost{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:var(--g2)}
+    .btn{display:inline-flex;align-items:center;gap:.4rem;padding:.6rem .85rem;border-radius:999px;text-decoration:none;font-size:.82rem;font-weight:700;white-space:nowrap}.btn.primary{background:linear-gradient(135deg,var(--c2),var(--c3));color:var(--w)}.btn.ghost{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:var(--g2)}.btn.logout{background:rgba(239,68,68,.16);border:1px solid rgba(239,68,68,.22);color:#fee2e2}
     main{max-width:1300px;margin:0 auto;padding:1.8rem 1.2rem 2.5rem}.hero{display:flex;justify-content:space-between;gap:1rem;align-items:flex-end;margin-bottom:1rem;flex-wrap:wrap}.hero .card,.filters,.table-wrap,.notice{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:var(--r2);box-shadow:var(--s);backdrop-filter:blur(12px)}
     .hero .card{padding:1.1rem 1.25rem}.eyebrow{display:inline-flex;padding:.3rem .65rem;border-radius:999px;background:rgba(13,148,136,.12);border:1px solid rgba(13,148,136,.22);color:#5eead4;font-size:.75rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;margin-bottom:.7rem}
     .hero h2{margin:0 0 .35rem;font-size:1.6rem}.hero p{margin:0;color:var(--g4);line-height:1.6}.chips{display:flex;gap:.65rem;flex-wrap:wrap}
@@ -96,7 +115,7 @@ $pendingCount = (int)count(array_filter($reports, function ($report) { return ($
   </div>
   <div style="display:flex;gap:.7rem;flex-wrap:wrap;justify-content:flex-end;align-items:center;">
     <a class="btn ghost" href="admin-dashboard.php">Dashboard</a>
-    <a class="btn primary" href="dashboard.php">Student Dashboard</a>
+    <a class="btn logout" href="admin-reports.php?action=logout">Logout</a>
   </div>
 </header>
 <main>
