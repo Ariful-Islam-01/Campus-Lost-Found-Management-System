@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 // admin-dashboard.php
 session_start();
 
@@ -20,6 +20,25 @@ if (!$user) {
 if (($user['role'] ?? 'user') !== 'admin') {
   header('Location: dashboard.php');
   exit;
+}
+
+if (isset($_GET['action']) && $_GET['action'] === 'logout') {
+    $_SESSION = [];
+    if (ini_get('session.use_cookies')) {
+        $params = session_get_cookie_params();
+        setcookie(
+            session_name(),
+            '',
+            time() - 42000,
+            $params['path'],
+            $params['domain'],
+            $params['secure'],
+            $params['httponly']
+        );
+    }
+    session_destroy();
+    header('Location: login.php');
+    exit;
 }
 
 if (isset($_GET['format']) && $_GET['format'] === 'json') {
@@ -451,12 +470,14 @@ $refreshedAt = date('M d, Y h:i A');
         <span class="brand-title">Admin Dashboard</span>
         <span class="brand-subtitle">Campus Lost &amp; Found management</span>
       </div>
+      <div><span class="brand-title">Admin Dashboard</span><span class="brand-subtitle">Campus Lost &amp; Found management</span></div>
     </a>
-
-    <div class="header-actions">
-      <span class="pending-pill">Pending claims: <strong id="pendingClaimsHeader"><?php echo (int)$stats['pending_claims']; ?></strong></span>
-      <span class="refresh-pill">Auto refresh: 60s</span>
-      <a class="btn-back" href="dashboard.php">Back to Student Dashboard</a>
+    <div class="actions">
+      <span class="pill warn">Pending claims: <strong id="pendingClaimsHeader"><?php echo (int)$stats['pending_claims']; ?></strong></span>
+      <span class="pill">Auto refresh: 60s</span>
+      <a class="btn" href="admin-reports.php">Manage reports</a>
+      <a class="btn" href="admin-audit-logs.php">Audit log</a>
+      <a class="btn" href="dashboard.php" style="background:rgba(255,255,255,.06);box-shadow:none;border:1px solid rgba(255,255,255,.12);">Student dashboard</a>
     </div>
   </header>
 

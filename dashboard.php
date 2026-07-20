@@ -13,6 +13,16 @@ require_once __DIR__ . '/db.php';
 $userId = $_SESSION['user_id'];
 $user = getUserById($userId);
 
+if (!$user) {
+  header('Location: login.php?action=logout');
+  exit;
+}
+
+if (isset($user['role']) && $user['role'] === 'admin') {
+  header('Location: admin-dashboard.php');
+  exit;
+}
+
 // Extract filter criteria from GET parameters
 $filters = [
     'search' => (isset($_GET['search']) && is_string($_GET['search'])) ? trim($_GET['search']) : '',
