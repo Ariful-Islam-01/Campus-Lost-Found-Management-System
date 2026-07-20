@@ -191,6 +191,31 @@ function initDatabase()
         $stmt = $db->prepare("UPDATE users SET role = 'admin', is_verified = 1 WHERE id = :id");
         $stmt->execute(['id' => $adminUser['id']]);
     }
+
+    // Seed default admin and student accounts if missing
+    $existingAdmin = $db->prepare("SELECT id FROM users WHERE email = :email");
+    $existingAdmin->execute(['email' => 'admin@campus.local']);
+    if (!$existingAdmin->fetch()) {
+        $passwordHash = password_hash('Admin@1234', PASSWORD_BCRYPT);
+        $stmt = $db->prepare("INSERT INTO users (name, email, role, password_hash, is_verified) VALUES (:name, :email, 'admin', :password_hash, 1)");
+        $stmt->execute([
+            'name' => 'Campus Admin',
+            'email' => 'admin@campus.local',
+            'password_hash' => $passwordHash
+        ]);
+    }
+
+    $existingStudent = $db->prepare("SELECT id FROM users WHERE email = :email");
+    $existingStudent->execute(['email' => 'student@campus.local']);
+    if (!$existingStudent->fetch()) {
+        $passwordHash = password_hash('Student@1234', PASSWORD_BCRYPT);
+        $stmt = $db->prepare("INSERT INTO users (name, email, role, password_hash, is_verified) VALUES (:name, :email, 'user', :password_hash, 1)");
+        $stmt->execute([
+            'name' => 'Campus Student',
+            'email' => 'student@campus.local',
+            'password_hash' => $passwordHash
+        ]);
+    }
 }
 
 // Auto-initialize the tables
