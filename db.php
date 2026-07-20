@@ -41,6 +41,7 @@ function initDatabase()
         password_hash VARCHAR(255) NOT NULL,
         verification_code VARCHAR(255),
         is_verified TINYINT DEFAULT 0,
+        status VARCHAR(20) NOT NULL DEFAULT 'Active',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
 
@@ -61,6 +62,12 @@ function initDatabase()
     $checkPhoto = $db->query("SHOW COLUMNS FROM users LIKE 'profile_photo'")->fetch();
     if (!$checkPhoto) {
         $db->exec("ALTER TABLE users ADD COLUMN profile_photo VARCHAR(255) NULL AFTER phone");
+    }
+
+    // Add account status for active/deactivated users
+    $checkStatus = $db->query("SHOW COLUMNS FROM users LIKE 'status'")->fetch();
+    if (!$checkStatus) {
+        $db->exec("ALTER TABLE users ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'Active' AFTER is_verified");
     }
 
     // Create lost_items table if not exists
@@ -203,6 +210,114 @@ function getUserById($userId)
     $stmt = $db->prepare("SELECT * FROM users WHERE id = :id");
     $stmt->execute(['id' => $userId]);
     return $stmt->fetch();
+}
+
+function getAdminUsers($filters = [])
+{
+    $db = getDBConnection();
+    $sql = "SELECT * FROM users WHERE 1=1";
+    $params = [];
+
+    if (!empty($filters['search'])) {
+        $sql .= " AND (name LIKE :search OR email LIKE :search)";
+        $params['search'] = '%' . $filters['search'] . '%';
+    }
+
+    if (!empty($filters['role']) && in_array($filters['role'], ['admin', 'user'], true)) {
+        $sql .= " AND role = :role";
+        $params['role'] = $filters['role'];
+    }
+
+    if (!empty($filters['status']) && in_array($filters['status'], ['Active', 'Inactive'], true)) {
+        $sql .= " AND status = :status";
+        $params['status'] = $filters['status'];
+    }
+
+    $sql .= " ORDER BY created_at DESC";
+
+    if (isset($filters['limit']) && isset($filters['offset'])) {
+        $sql .= " LIMIT :limit OFFSET :offset";
+    }
+
+    $stmt = $db->prepare($sql);
+    foreach ($params as $key => $value) {
+        $stmt->bindValue(':' . $key, $value, PDO::PARAM_STR);
+    }
+    if (isset($filters['limit']) && isset($filters['offset'])) {
+        $stmt->bindValue(':limit', (int)$filters['limit'], PDO::PARAM_INT);
+        $stmt->bindValue(':offset', (int)$filters['offset'], PDO::PARAM_INT);
+    }
+    $stmt->execute();
+    return $stmt->fetchAll();
+}
+
+function countAdminUsers($filters = [])
+{
+    $db = getDBConnection();
+    $sql = "SELECT COUNT(*) FROM users WHERE 1=1";
+    $params = [];
+
+    if (!empty($filters['search'])) {
+        $sql .= " AND (name LIKE :search OR email LIKE :search)";
+        $params['search'] = '%' . $filters['search'] . '%';
+    }
+
+    if (!empty($filters['role']) && in_array($filters['role'], ['admin', 'user'], true)) {
+        $sql .= " AND role = :role";
+        $params['role'] = $filters['role'];
+    }
+
+    if (!empty($filters['status']) && in_array($filters['status'], ['Active', 'Inactive'], true)) {
+        $sql .= " AND status = :status";
+        $params['status'] = $filters['status'];
+    }
+
+    $stmt = $db->prepare($sql);
+    foreach ($params as $key => $value) {
+        $stmt->bindValue(':' . $key, $value, PDO::PARAM_STR);
+    }
+    $stmt->execute();
+    return (int)$stmt->fetchColumn();
+}
+
+function setUserStatus($userId, $status)
+{
+    $allowed = ['Active', 'Inactive'];
+    if (!in_array($status, $allowed, true)) {
+        return false;
+    }
+
+    $db = getDBConnection();
+    $stmt = $db->prepare("UPDATE users SET status = :status WHERE id = :id");
+    return $stmt->execute(['status' => $status, 'id' => $userId]);
+}
+
+function deleteUserById($userId)
+{
+    $db = getDBConnection();
+    $stmt = $db->prepare("DELETE FROM users WHERE id = :id");
+    return $stmt->execute(['id' => $userId]);
+}
+
+function isEmailTaken($email, $excludeUserId = null)
+{
+    $db = getDBConnection();
+    $sql = "SELECT COUNT(*) FROM users WHERE email = :email";
+    $params = ['email' => $email];
+    if ($excludeUserId !== null) {
+        $sql .= " AND id != :excludeId";
+        $params['excludeId'] = $excludeUserId;
+    }
+    $stmt = $db->prepare($sql);
+    $stmt->execute($params);
+    return (int)$stmt->fetchColumn() > 0;
+}
+
+function updateUserAccount($userId, $name, $email, $role)
+{
+    $db = getDBConnection();
+    $stmt = $db->prepare("UPDATE users SET name = :name, email = :email, role = :role WHERE id = :id");
+    return $stmt->execute(['name' => $name, 'email' => $email, 'role' => $role, 'id' => $userId]);
 }
 
 function isAdminUser($user)
