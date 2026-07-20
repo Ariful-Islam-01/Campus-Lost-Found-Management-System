@@ -139,11 +139,13 @@ $refreshedAt = date('M d, Y h:i A');
       justify-content: flex-end;
     }
 
-    .refresh-pill, .pending-pill, .btn-back {
+    .refresh-pill,
+    .pending-pill,
+    .button {
       display: inline-flex;
       align-items: center;
       gap: 0.45rem;
-      padding: 0.62rem 0.9rem;
+      padding: 0.62rem 0.95rem;
       border-radius: 999px;
       font-size: 0.82rem;
       font-weight: 700;
@@ -163,10 +165,17 @@ $refreshedAt = date('M d, Y h:i A');
       color: #fbbf24;
     }
 
-    .btn-back {
+    .button {
       background: linear-gradient(135deg, var(--clr-teal-600), var(--clr-teal-500));
       color: var(--clr-white);
       box-shadow: 0 4px 12px rgba(13, 148, 136, 0.22);
+    }
+
+    .button.logout {
+      background: rgba(239, 68, 68, 0.16);
+      border: 1px solid rgba(239, 68, 68, 0.22);
+      color: #fee2e2;
+      box-shadow: none;
     }
 
     main {
@@ -456,7 +465,10 @@ $refreshedAt = date('M d, Y h:i A');
     <div class="header-actions">
       <span class="pending-pill">Pending claims: <strong id="pendingClaimsHeader"><?php echo (int)$stats['pending_claims']; ?></strong></span>
       <span class="refresh-pill">Auto refresh: 60s</span>
-      <a class="btn-back" href="dashboard.php">Back to Student Dashboard</a>
+      <a class="button" href="admin-claims.php">Review claims</a>
+      <a class="button" href="admin-reports.php">Manage reports</a>
+      <a class="button" href="admin-audit-logs.php">Audit log</a>
+      <a class="button logout" href="admin-dashboard.php?action=logout">Logout</a>
     </div>
   </header>
 
@@ -510,7 +522,6 @@ $refreshedAt = date('M d, Y h:i A');
           <h2 class="panel-title" id="activityTitle">Recent Activity Feed</h2>
           <p class="panel-subtitle">Latest 10 events from reports and claims.</p>
         </div>
-        <a class="btn-back" href="dashboard.php" style="padding: 0.55rem 0.85rem;">Open student dashboard</a>
       </div>
 
       <div id="activityFeed">

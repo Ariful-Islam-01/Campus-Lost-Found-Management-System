@@ -2,6 +2,25 @@
 // admin-audit-logs.php
 session_start();
 
+if (isset($_GET['action']) && $_GET['action'] === 'logout') {
+    $_SESSION = [];
+    if (ini_get('session.use_cookies')) {
+        $params = session_get_cookie_params();
+        setcookie(
+            session_name(),
+            '',
+            time() - 42000,
+            $params['path'],
+            $params['domain'],
+            $params['secure'],
+            $params['httponly']
+        );
+    }
+    session_destroy();
+    header('Location: login.php');
+    exit;
+}
+
 if (!isset($_SESSION['user_id'])) {
     header('Location: login.php');
     exit;
@@ -15,7 +34,7 @@ if (!$user) {
     exit;
 }
 
-if (!isAdminUser($user)) {
+if (empty($user['role']) || strtolower($user['role']) !== 'admin') {
     header('Location: dashboard.php');
     exit;
 }
@@ -35,7 +54,7 @@ $logs = getAdminAuditLogs(50);
     :root{--c2:#0d9488;--c3:#2dd4bf;--w:#fff;--g2:#e5e7eb;--g3:#d1d5db;--g4:#9ca3af;--s:0 18px 50px rgba(0,0,0,.16),0 6px 20px rgba(0,0,0,.10)}
     *{box-sizing:border-box} body{margin:0;font-family:'Inter',system-ui,sans-serif;background:linear-gradient(180deg,#101827 0%,#0c1420 100%);color:var(--w)}
     header{position:sticky;top:0;background:rgba(8,15,28,.8);backdrop-filter:blur(14px);border-bottom:1px solid rgba(255,255,255,.08);padding:1rem 1.2rem;display:flex;justify-content:space-between;gap:1rem;align-items:center;flex-wrap:wrap}
-    .btn{display:inline-flex;align-items:center;gap:.4rem;padding:.6rem .85rem;border-radius:999px;text-decoration:none;font-size:.82rem;font-weight:700;white-space:nowrap}.btn.primary{background:linear-gradient(135deg,var(--c2),var(--c3));color:var(--w)}.btn.ghost{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:var(--g2)}
+    .btn{display:inline-flex;align-items:center;gap:.4rem;padding:.6rem .85rem;border-radius:999px;text-decoration:none;font-size:.82rem;font-weight:700;white-space:nowrap}.btn.primary{background:linear-gradient(135deg,var(--c2),var(--c3));color:var(--w)}.btn.ghost{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:var(--g2)}.btn.logout{background:rgba(239,68,68,.16);border:1px solid rgba(239,68,68,.22);color:#fee2e2}
     main{max-width:1200px;margin:0 auto;padding:1.8rem 1.2rem 2.5rem}.card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:20px;box-shadow:var(--s);backdrop-filter:blur(12px);padding:1rem 1.1rem}.head{display:flex;justify-content:space-between;gap:1rem;align-items:end;flex-wrap:wrap;margin-bottom:1rem}.head h1{margin:0;font-size:1.4rem}.head p{margin:.25rem 0 0;color:var(--g4)}
     table{width:100%;border-collapse:collapse}.scroll{overflow:auto}.table thead th{text-align:left;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--g4);padding:1rem 1.1rem;border-bottom:1px solid rgba(255,255,255,.08)}.table tbody td{padding:1rem 1.1rem;border-bottom:1px solid rgba(255,255,255,.06);vertical-align:top}.table tbody tr:hover{background:rgba(255,255,255,.03)}
     .muted{color:var(--g4);font-size:.82rem;line-height:1.5}.empty{padding:2rem 1rem;text-align:center;color:var(--g4)}
@@ -51,6 +70,7 @@ $logs = getAdminAuditLogs(50);
   <div style="display:flex;gap:.7rem;flex-wrap:wrap;">
     <a class="btn ghost" href="admin-reports.php">Reports</a>
     <a class="btn primary" href="admin-dashboard.php">Dashboard</a>
+    <a class="btn logout" href="admin-audit-logs.php?action=logout">Logout</a>
   </div>
 </header>
 <main>

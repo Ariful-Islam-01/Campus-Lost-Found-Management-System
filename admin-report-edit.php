@@ -2,6 +2,25 @@
 // admin-report-edit.php
 session_start();
 
+if (isset($_GET['action']) && $_GET['action'] === 'logout') {
+    $_SESSION = [];
+    if (ini_get('session.use_cookies')) {
+        $params = session_get_cookie_params();
+        setcookie(
+            session_name(),
+            '',
+            time() - 42000,
+            $params['path'],
+            $params['domain'],
+            $params['secure'],
+            $params['httponly']
+        );
+    }
+    session_destroy();
+    header('Location: login.php');
+    exit;
+}
+
 if (!isset($_SESSION['user_id'])) {
     header('Location: login.php');
     exit;
@@ -15,7 +34,7 @@ if (!$user) {
     exit;
 }
 
-if (!isAdminUser($user)) {
+if (empty($user['role']) || strtolower($user['role']) !== 'admin') {
     header('Location: dashboard.php');
     exit;
 }
